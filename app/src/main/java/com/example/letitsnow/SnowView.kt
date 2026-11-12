@@ -11,8 +11,10 @@ import android.view.MotionEvent
 import android.view.View
 
 /**
- * Кастомный View для отрисовки и анимации снегопада, накопления сугробов
- * и интерактивной очистки снега пальцем с использованием Canvas и Choreographer.
+ * Кастомный View с четким разделением двух слоев:
+ * Слой 1 — плавно падающие снежинки (не зависят от касаний, не застывают в воздухе).
+ * Слой 2 — физически накопившийся снег (двумерная сетка плотности), постепенно заполняющий
+ * пространство снизу вверх и очищаемый пальцем с мягкими краями и валиками.
  */
 class SnowView @JvmOverloads constructor(
     context: Context,
@@ -56,8 +58,8 @@ class SnowView @JvmOverloads constructor(
     private val snowAccumulation = SnowAccumulation()
     private val snowMask = SnowMask()
 
-    // Переиспользуемый Paint без аллокаций в onDraw
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    // Переиспользуемый Paint для отрисовки падающих снежинок (без аллокаций в onDraw)
+    private val flakePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         style = Paint.Style.FILL
     }
@@ -94,13 +96,7 @@ class SnowView @JvmOverloads constructor(
                         }
                     }
 
-                    // Обновляем физику сугробов
-                    snowAccumulation.update(dt)
-
-                    // Обновляем маску очистки (постепенное повторное замерзание)
-                    snowMask.update(dt)
-
-                    // Обновляем координаты снежинок и регистрируем падение на сугробы
+                    // Обновляем координаты падающих снежинок (Слой 1)
                     for (i in 0 until snowflakes.size) {
                         snowflakes[i].update(
                             dtSec = dt,
@@ -112,6 +108,10 @@ class SnowView @JvmOverloads constructor(
                             accumulationMultiplier = accumulationRateMultiplier
                         )
                     }
+
+                    // Обновляем физику 2D сетки снега (гравитационное оседание и оползание)
+                    snowAccumulation.update(dt)
+
                     invalidate()
                 }
             }
@@ -124,7 +124,7 @@ class SnowView @JvmOverloads constructor(
     }
 
     init {
-        // Устанавливаем контрастный темный фон, если фон не был задан снаружи
+        // Устанавливаем чистый темный фон по умолчанию (без замороженного слоя поверх)
         if (background == null) {
             setBackgroundColor(DEFAULT_BACKGROUND_COLOR)
         }
@@ -142,7 +142,7 @@ class SnowView @JvmOverloads constructor(
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         if (w > 0 && h > 0) {
-            snowMask.setSize(w, h, density)
+            snowMask.setSize(w.toFloat(), h.toFloat(), density)
             snowAccumulation.setSize(w.toFloat(), h.toFloat(), density)
             initSnowflakes(w.toFloat(), h.toFloat())
         }
@@ -152,6 +152,7 @@ class SnowView @JvmOverloads constructor(
         snowflakes.clear()
         repeat(targetSnowflakeCount) {
             val flake = Snowflake()
+            // isInitial = true: все снежинки начинают сверху экрана (экран полностью чист)
             flake.reset(width, height, density, isInitial = true)
             snowflakes.add(flake)
         }
@@ -160,29 +161,22 @@ class SnowView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        // 1. Отрисовка всех падающих снежинок
+        // Слой 1: Падающие снежинки (плавно движутся, независимы от касаний)
         for (i in 0 until snowflakes.size) {
             val flake = snowflakes[i]
-            paint.alpha = flake.alpha
-            canvas.drawCircle(flake.x, flake.y, flake.radius, paint)
+            flakePaint.alpha = flake.alpha
+            canvas.drawCircle(flake.x, flake.y, flake.radius, flakePaint)
         }
 
-        // 2. Отрисовка накопившихся сугробов поверх снежинок в нижней части экрана
+        // Слой 2: Накопившийся снег (2D физическая сетка плотности с естественными холмами)
         snowAccumulation.draw(canvas)
-
-        // 3. Отрисовка слоя инея и очищенных пальцем областей
-        snowMask.draw(canvas)
     }
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        val handled = snowMask.onTouchEvent(event)
+        // Палец убирает только накопившийся снег (сугроб), не рисуя круги в воздухе
+        val handled = snowMask.onTouchEvent(event, snowAccumulation)
         if (handled) {
-            // Если касание проходит по нижней области, счищаем также и накопившийся сугроб
-            val snowHeight = snowAccumulation.getSnowHeight(event.x)
-            if (event.y + snowMask.wipeRadius >= height - snowHeight) {
-                snowAccumulation.clearSnow(event.x, snowMask.wipeRadius)
-            }
             invalidate()
             if (event.actionMasked == MotionEvent.ACTION_UP) {
                 performClick()

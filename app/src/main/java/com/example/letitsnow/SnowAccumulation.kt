@@ -1,285 +1,292 @@
 package com.example.letitsnow
 
+import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.LinearGradient
 import android.graphics.Paint
-import android.graphics.Path
-import android.graphics.Shader
+import android.graphics.Rect
+import kotlin.math.hypot
 
 /**
- * Класс, отвечающий за симуляцию накопления снега, физику сугробов и их отрисовку на Canvas.
+ * Двумерная физическая модель накопления снега (2D Snow Density Grid).
+ * Снег накапливается снизу вверх по всей высоте экрана без искусственных ограничений.
+ * Падающие снежинки физически взаимодействуют с поверхностью накопленного снега.
  */
 class SnowAccumulation {
 
     private var width: Float = 0f
     private var height: Float = 0f
-    private var density: Float = 1f
-    private var stepX: Float = 1f
-    private var count: Int = 0
-    private var maxHeight: Float = 0f
+    private var densityScale: Float = 1f
 
-    // Массивы высот для переднего и заднего слоя сугробов (в пикселях)
-    private var heights = FloatArray(0)
-    private var backHeights = FloatArray(0)
-    private var tempHeights = FloatArray(0)
-    private var xCoords = FloatArray(0)
+    var cols: Int = 0
+        private set
+    var rows: Int = 0
+        private set
 
-    // Переиспользуемые пути для отрисовки без аллокаций в onDraw
-    private val frontPath = Path()
-    private val backPath = Path()
-    private val crestPath = Path()
+    var cellW: Float = 1f
+        private set
+    var cellH: Float = 1f
+        private set
 
-    // Кисти для переднего сугроба, задней тени и морозного контура
-    private val frontPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
-    }
+    // Двумерная сетка плотности снега (0.0f - чисто, 1.0f - плотный снег)
+    private var densities = FloatArray(0)
+    private var pixels = IntArray(0)
 
-    private val backPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0x99A8C8E6.toInt() // Полупрозрачный холодный голубоватый оттенок тени
-        style = Paint.Style.FILL
-    }
+    private var gridBitmap: Bitmap? = null
+    private val srcRect = Rect()
+    private val dstRect = Rect()
 
-    private val crestPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xE6FFFFFF.toInt() // Яркий морозный белый гребень
-        style = Paint.Style.STROKE
-        strokeCap = Paint.Cap.ROUND
-        strokeJoin = Paint.Join.ROUND
+    // Кисть с билинейной GPU-фильтрацией для мягких естественных границ снега
+    private val bitmapPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        isFilterBitmap = true
+        isDither = true
     }
 
     /**
-     * Инициализация или обновление размеров экрана и плотности пикселей.
+     * Инициализация или пересчет сетки при изменении размеров экрана.
      */
     fun setSize(w: Float, h: Float, screenDensity: Float) {
         if (w <= 0f || h <= 0f) return
 
         width = w
         height = h
-        density = screenDensity
-        crestPaint.strokeWidth = 2f * density
+        densityScale = screenDensity
 
-        // Максимальная высота сугробов — около 22% от высоты экрана
-        maxHeight = (h * 0.22f).coerceAtMost(300f * density)
+        // Размер ячейки ~5dp для оптимального баланса детализации и производительности
+        val step = 5f * densityScale
+        cols = (w / step).toInt().coerceIn(60, 100)
+        rows = (h / step).toInt().coerceIn(120, 220)
 
-        // Шаг между точками около 6dp для оптимального баланса плавности и производительности
-        val stepDp = 6f * density
-        count = (w / stepDp).toInt().coerceIn(70, 220)
-        stepX = w / (count - 1)
+        cellW = w / cols
+        cellH = h / rows
 
-        val oldHeights = heights
-        heights = FloatArray(count)
-        backHeights = FloatArray(count)
-        tempHeights = FloatArray(count)
-        xCoords = FloatArray(count)
+        val total = cols * rows
+        val oldDensities = densities
+        val oldCols = cols
+        val oldRows = rows
 
-        for (i in 0 until count) {
-            xCoords[i] = i * stepX
-            // Если массив уже существовал, переносим пропорционально
-            if (oldHeights.isNotEmpty()) {
-                val oldIdx = (i.toFloat() / count * oldHeights.size).toInt().coerceIn(0, oldHeights.size - 1)
-                heights[i] = oldHeights[oldIdx]
-                backHeights[i] = oldHeights[oldIdx] * 0.9f
+        densities = FloatArray(total)
+        pixels = IntArray(total)
+
+        // Если экран повернулся, переносим существующие плотности
+        if (oldDensities.isNotEmpty() && oldCols > 0 && oldRows > 0) {
+            for (r in 0 until rows) {
+                val oldR = (r.toFloat() / rows * oldRows).toInt().coerceIn(0, oldRows - 1)
+                for (c in 0 until cols) {
+                    val oldC = (c.toFloat() / cols * oldCols).toInt().coerceIn(0, oldCols - 1)
+                    densities[r * cols + c] = oldDensities[oldR * oldCols + oldC]
+                }
             }
         }
 
-        // Вертикальный градиент: от кристально белого на гребне к мягкому зимнему льдисто-голубому внизу
-        val gradient = LinearGradient(
-            0f,
-            height - maxHeight,
-            0f,
-            height,
-            intArrayOf(
-                Color.WHITE,
-                0xFFF4F9FD.toInt(),
-                0xFFD4E6F7.toInt()
-            ),
-            floatArrayOf(0f, 0.4f, 1f),
-            Shader.TileMode.CLAMP
-        )
-        frontPaint.shader = gradient
+        gridBitmap?.recycle()
+        gridBitmap = Bitmap.createBitmap(cols, rows, Bitmap.Config.ARGB_8888)
+
+        srcRect.set(0, 0, cols, rows)
+        dstRect.set(0, 0, w.toInt(), h.toInt())
     }
 
     /**
-     * Возвращает высоту снега (от нижнего края экрана) в заданной горизонтальной координате [x].
+     * Возвращает Y-координату поверхности снега в горизонтальной позиции [x].
+     * Если снега в колонке нет, возвращает дно экрана [height].
+     */
+    fun getSurfaceY(x: Float): Float {
+        if (cols == 0 || rows == 0) return height
+        val c = (x / cellW).toInt().coerceIn(0, cols - 1)
+
+        // Ищем самую верхнюю ячейку (минимальный r), где есть снег
+        for (r in 0 until rows) {
+            val d = densities[r * cols + c]
+            if (d > 0.08f) {
+                return r * cellH + (1.0f - d) * cellH
+            }
+        }
+        return height
+    }
+
+    /**
+     * Возвращает высоту снега (от дна экрана) в точке [x].
      */
     fun getSnowHeight(x: Float): Float {
-        if (count == 0) return 0f
-        val clampedX = x.coerceIn(0f, width)
-        val fIndex = (clampedX / stepX).coerceIn(0f, (count - 1).toFloat())
-        val i = fIndex.toInt()
-        val frac = fIndex - i
-
-        return if (i >= count - 1) {
-            heights[count - 1]
-        } else {
-            heights[i] * (1f - frac) + heights[i + 1] * frac
-        }
+        return (height - getSurfaceY(x)).coerceAtLeast(0f)
     }
 
     /**
-     * Добавляет порцию снега в точке [x] при приземлении снежинки.
-     * Распределяет объем по нормальному распределению на соседние сегменты, предотвращая острые пики.
-     * [accumulationMultiplier] регулирует скорость накопления снега в соответствии с настройками.
+     * Добавление снега при приземлении снежинки в точке [x].
+     * Снег ложится на текущую поверхность и может накапливаться до самого верха экрана.
      */
     fun addSnow(x: Float, flakeRadius: Float, accumulationMultiplier: Float = 1f) {
-        if (count == 0) return
-        val clampedX = x.coerceIn(0f, width)
-        val centerIdx = (clampedX / stepX).toInt().coerceIn(0, count - 1)
+        if (cols == 0 || rows == 0) return
+        val c = (x / cellW).toInt().coerceIn(0, cols - 1)
 
-        // Объем добавления пропорционален размеру снежинки и коэффициенту накопления
-        val baseDeposit = flakeRadius * 0.35f * accumulationMultiplier
+        // Находим целевую ячейку поверхности
+        var targetRow = rows - 1
+        for (r in 0 until rows) {
+            if (densities[r * cols + c] > 0.08f) {
+                targetRow = r
+                break
+            }
+        }
 
-        // Ядро распределения на 5 точек: 0.38, 0.23, 0.08
-        val weights = floatArrayOf(0.08f, 0.23f, 0.38f, 0.23f, 0.08f)
+        // Если ячейка уже заполнена, снег начинает ложиться на ячейку выше
+        if (densities[targetRow * cols + c] >= 0.95f && targetRow > 0) {
+            targetRow--
+        }
 
-        for (offset in -2..2) {
-            val idx = (centerIdx + offset).coerceIn(0, count - 1)
-            val weight = weights[offset + 2]
+        val deposit = flakeRadius * 0.16f * accumulationMultiplier
 
-            // Замедление накопления при приближении к максимальной высоте
-            val saturationFactor = (1f - heights[idx] / maxHeight).coerceIn(0f, 1f)
-            val added = baseDeposit * weight * saturationFactor
-            heights[idx] += added
+        // Добавляем снег в целевую ячейку и распределяем часть на соседние колонки
+        densities[targetRow * cols + c] =
+            (densities[targetRow * cols + c] + deposit * 0.6f).coerceAtMost(1.0f)
 
-            // Добавляем снег на задний слой сугроба со сдвигом для создания объема и рельефа
-            val backIdx = (centerIdx + offset + 3).coerceIn(0, count - 1)
-            val backSaturation = (1f - backHeights[backIdx] / maxHeight).coerceIn(0f, 1f)
-            backHeights[backIdx] += added * 0.85f * backSaturation
+        if (c > 0) {
+            densities[targetRow * cols + (c - 1)] =
+                (densities[targetRow * cols + (c - 1)] + deposit * 0.2f).coerceAtMost(1.0f)
+        }
+        if (c < cols - 1) {
+            densities[targetRow * cols + (c + 1)] =
+                (densities[targetRow * cols + (c + 1)] + deposit * 0.2f).coerceAtMost(1.0f)
         }
     }
 
     /**
-     * Очищает часть сугроба при касании пальцем в точке [x] с радиусом [radius].
+     * Очистка снега вдоль непрерывного сегмента движения пальца:
+     * форма вытянута вдоль вектора движения, с мягким переходом прозрачности
+     * и снежными валиками по бокам.
      */
-    fun clearSnow(x: Float, radius: Float) {
-        if (count == 0) return
-        val startX = x - radius
-        val endX = x + radius
-        val startIdx = (startX / stepX).toInt().coerceIn(0, count - 1)
-        val endIdx = (endX / stepX).toInt().coerceIn(0, count - 1)
+    fun clearAlongSegment(
+        x0: Float,
+        y0: Float,
+        x1: Float,
+        y1: Float,
+        radius: Float
+    ) {
+        if (cols == 0 || rows == 0) return
 
-        for (i in startIdx..endIdx) {
-            val dist = kotlin.math.abs(xCoords[i] - x)
-            if (dist < radius) {
-                val factor = (dist / radius).coerceIn(0f, 1f)
-                heights[i] *= factor
-                backHeights[i] *= factor
+        val minX = minOf(x0, x1) - radius * 1.35f
+        val maxX = maxOf(x0, x1) + radius * 1.35f
+        val minY = minOf(y0, y1) - radius * 1.35f
+        val maxY = maxOf(y0, y1) + radius * 1.35f
+
+        val startCol = (minX / cellW).toInt().coerceIn(0, cols - 1)
+        val endCol = (maxX / cellW).toInt().coerceIn(0, cols - 1)
+        val startRow = (minY / cellH).toInt().coerceIn(0, rows - 1)
+        val endRow = (maxY / cellH).toInt().coerceIn(0, rows - 1)
+
+        for (c in startCol..endCol) {
+            val cx = (c + 0.5f) * cellW
+            for (r in startRow..endRow) {
+                val cy = (r + 0.5f) * cellH
+
+                val dist = distToSegment(cx, cy, x0, y0, x1, y1)
+
+                // Естественная микро-неровность границы дорожки
+                val noise = kotlin.math.sin(cx * 0.08f) * kotlin.math.cos(cy * 0.08f) * 0.12f * radius
+                val effectiveR = radius + noise
+
+                val idx = r * cols + c
+                val currentDensity = densities[idx]
+
+                if (dist < effectiveR * 0.65f) {
+                    // Ядро дорожки: полностью очищается
+                    densities[idx] = 0f
+                } else if (dist < effectiveR) {
+                    // Плавный переход прозрачности
+                    val factor = ((dist - effectiveR * 0.65f) / (effectiveR * 0.35f)).coerceIn(0f, 1f)
+                    densities[idx] = currentDensity * factor * factor
+                } else if (dist < effectiveR * 1.25f && currentDensity > 0.05f) {
+                    // Снежные валики: скопление сдвинутого снега по краям дорожки
+                    val ridgeFactor = (1.0f - (dist - effectiveR) / (effectiveR * 0.25f)).coerceIn(0f, 1f)
+                    densities[idx] = (currentDensity + 0.35f * ridgeFactor).coerceAtMost(1.0f)
+                }
             }
         }
     }
 
+    private fun distToSegment(
+        px: Float,
+        py: Float,
+        x0: Float,
+        y0: Float,
+        x1: Float,
+        y1: Float
+    ): Float {
+        val dx = x1 - x0
+        val dy = y1 - y0
+        val lenSq = dx * dx + dy * dy
+        if (lenSq == 0f) return hypot(px - x0, py - y0)
+        val t = (((px - x0) * dx + (py - y0) * dy) / lenSq).coerceIn(0f, 1f)
+        val projX = x0 + t * dx
+        val projY = y0 + t * dy
+        return hypot(px - projX, py - projY)
+    }
+
     /**
-     * Физический шаг симуляции: распространение снега под действием гравитации
-     * (угол естественного откоса) и мягкое сглаживание ветром/оседанием.
+     * Физический шаг симуляции: гравитационное оседание в пустые ячейки снизу
+     * и естественное оползание по диагонали (угол откоса).
      */
     fun update(dtSec: Float) {
-        if (count < 2) return
+        if (cols == 0 || rows == 0) return
 
-        // 1. Оползание снега при превышении максимального угла наклона (угол естественного откоса)
-        val maxSlope = 1.3f * density
-        val avalancheSpeed = (dtSec * 8f).coerceAtMost(0.8f)
-
-        for (i in 0 until count - 1) {
-            val diff = heights[i] - heights[i + 1]
-            if (diff > maxSlope) {
-                val slip = (diff - maxSlope) * 0.5f * avalancheSpeed
-                heights[i] -= slip
-                heights[i + 1] += slip
-            } else if (-diff > maxSlope) {
-                val slip = (-diff - maxSlope) * 0.5f * avalancheSpeed
-                heights[i] += slip
-                heights[i + 1] -= slip
-            }
-
-            // Аналогично для заднего слоя
-            val backDiff = backHeights[i] - backHeights[i + 1]
-            if (backDiff > maxSlope) {
-                val slip = (backDiff - maxSlope) * 0.5f * avalancheSpeed
-                backHeights[i] -= slip
-                backHeights[i + 1] += slip
-            } else if (-backDiff > maxSlope) {
-                val slip = (-backDiff - maxSlope) * 0.5f * avalancheSpeed
-                backHeights[i] += slip
-                backHeights[i + 1] -= slip
+        // 1. Гравитационное оседание: снег падает в пустоты прямо под ним
+        for (c in 0 until cols) {
+            for (r in rows - 1 downTo 1) {
+                val currIdx = r * cols + c
+                val aboveIdx = (r - 1) * cols + c
+                val dAbove = densities[aboveIdx]
+                if (densities[currIdx] < 1.0f && dAbove > 0f) {
+                    val space = 1.0f - densities[currIdx]
+                    val flow = minOf(space, dAbove)
+                    densities[currIdx] += flow
+                    densities[aboveIdx] -= flow
+                }
             }
         }
 
-        // 2. Мягкая диффузия (сглаживание неровностей для естественного округлого вида сугробов)
-        val smoothFactor = (dtSec * 1.2f).coerceIn(0f, 0.15f)
-
-        for (i in 0 until count) {
-            val left = if (i > 0) heights[i - 1] else heights[i]
-            val right = if (i < count - 1) heights[i + 1] else heights[i]
-            tempHeights[i] = heights[i] + ((left + right) * 0.5f - heights[i]) * smoothFactor
+        // 2. Диагональное оползание (формирование естественных пологих холмиков)
+        val slipRate = (dtSec * 3f).coerceIn(0f, 0.3f)
+        for (c in 0 until cols) {
+            for (r in rows - 2 downTo 0) {
+                val idx = r * cols + c
+                val d = densities[idx]
+                if (d > 0.45f) {
+                    if (c > 0 && densities[(r + 1) * cols + (c - 1)] < 0.7f) {
+                        val slip = minOf(0.06f, d * slipRate)
+                        densities[idx] -= slip
+                        densities[(r + 1) * cols + (c - 1)] += slip
+                    }
+                    if (c < cols - 1 && densities[(r + 1) * cols + (c + 1)] < 0.7f) {
+                        val slip = minOf(0.06f, d * slipRate)
+                        densities[idx] -= slip
+                        densities[(r + 1) * cols + (c + 1)] += slip
+                    }
+                }
+            }
         }
-        System.arraycopy(tempHeights, 0, heights, 0, count)
-
-        for (i in 0 until count) {
-            val left = if (i > 0) backHeights[i - 1] else backHeights[i]
-            val right = if (i < count - 1) backHeights[i + 1] else backHeights[i]
-            tempHeights[i] = backHeights[i] + ((left + right) * 0.5f - backHeights[i]) * smoothFactor
-        }
-        System.arraycopy(tempHeights, 0, backHeights, 0, count)
     }
 
     /**
-     * Отрисовка сугробов на Canvas без создания объектов в цикле.
+     * Отрисовка накопившегося снега на Canvas через аппаратно фильтруемый Bitmap.
      */
     fun draw(canvas: Canvas) {
-        if (count < 2 || width <= 0f || height <= 0f) return
+        val bmp = gridBitmap ?: return
+        if (bmp.isRecycled || cols == 0 || rows == 0) return
 
-        // 1. Отрисовка заднего теневого слоя сугроба (голубоватый тон)
-        buildDunePath(backPath, backHeights, yOffset = 3f * density)
-        canvas.drawPath(backPath, backPaint)
-
-        // 2. Отрисовка основного белого сугроба с градиентом
-        buildDunePath(frontPath, heights, yOffset = 0f)
-        canvas.drawPath(frontPath, frontPaint)
-
-        // 3. Отрисовка верхнего морозного контура
-        buildCrestPath(crestPath, heights)
-        canvas.drawPath(crestPath, crestPaint)
-    }
-
-    private fun buildDunePath(path: Path, hArray: FloatArray, yOffset: Float) {
-        path.rewind()
-        val firstY = (height - hArray[0] + yOffset).coerceAtMost(height)
-        path.moveTo(0f, height)
-        path.lineTo(0f, firstY)
-
-        for (i in 0 until count - 1) {
-            val x0 = xCoords[i]
-            val y0 = (height - hArray[i] + yOffset).coerceAtMost(height)
-            val x1 = xCoords[i + 1]
-            val y1 = (height - hArray[i + 1] + yOffset).coerceAtMost(height)
-            val midX = (x0 + x1) * 0.5f
-            val midY = (y0 + y1) * 0.5f
-            path.quadTo(x0, y0, midX, midY)
+        val total = cols * rows
+        for (i in 0 until total) {
+            val d = densities[i]
+            if (d <= 0.02f) {
+                pixels[i] = 0 // Прозрачно: открывает фон
+            } else {
+                val alpha = (d * 255f).toInt().coerceIn(0, 255)
+                // Естественный морозный градиент снега: от чистого белого к мягкому льдистому оттенку
+                val red = (220 + 35 * d).toInt().coerceIn(0, 255)
+                val green = (235 + 20 * d).toInt().coerceIn(0, 255)
+                val blue = 255
+                pixels[i] = (alpha shl 24) or (red shl 16) or (green shl 8) or blue
+            }
         }
 
-        val lastY = (height - hArray[count - 1] + yOffset).coerceAtMost(height)
-        path.lineTo(width, lastY)
-        path.lineTo(width, height)
-        path.lineTo(0f, height)
-        path.close()
-    }
-
-    private fun buildCrestPath(path: Path, hArray: FloatArray) {
-        path.rewind()
-        val firstY = (height - hArray[0]).coerceAtMost(height)
-        path.moveTo(0f, firstY)
-
-        for (i in 0 until count - 1) {
-            val x0 = xCoords[i]
-            val y0 = (height - hArray[i]).coerceAtMost(height)
-            val x1 = xCoords[i + 1]
-            val y1 = (height - hArray[i + 1]).coerceAtMost(height)
-            val midX = (x0 + x1) * 0.5f
-            val midY = (y0 + y1) * 0.5f
-            path.quadTo(x0, y0, midX, midY)
-        }
-
-        val lastY = (height - hArray[count - 1]).coerceAtMost(height)
-        path.lineTo(width, lastY)
+        bmp.setPixels(pixels, 0, cols, 0, 0, cols, rows)
+        canvas.drawBitmap(bmp, srcRect, dstRect, bitmapPaint)
     }
 }

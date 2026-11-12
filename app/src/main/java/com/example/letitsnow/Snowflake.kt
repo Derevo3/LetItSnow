@@ -48,9 +48,8 @@ data class Snowflake(
         angle += swaySpeed * dtSec
         x = baseX + sin(angle) * swayRadius
 
-        // Высота поверхности снега в текущей точке X
-        val snowHeight = accumulation?.getSnowHeight(x) ?: 0f
-        val surfaceY = height - snowHeight
+        // Высота поверхности снега в текущей точке X (двумерная сетка накопления)
+        val surfaceY = accumulation?.getSurfaceY(x) ?: height
 
         // Если снежинка достигла поверхности сугроба или нижнего края экрана
         if (y + radius >= surfaceY) {
@@ -100,8 +99,8 @@ data class Snowflake(
         x = baseX + sin(angle) * swayRadius
 
         y = if (isInitial) {
-            // При первом запуске распределяем снежинки по всей высоте экрана
-            Random.nextFloat() * height
+            // При первом запуске все снежинки начинают сверху экрана (экран чистый)
+            -radius - (Random.nextFloat() * height * 0.75f)
         } else {
             // При повторном появлении создаем чуть выше верхней границы экрана
             -radius - (Random.nextFloat() * 40f * density)

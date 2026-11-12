@@ -34,8 +34,9 @@ class ExampleUnitTest {
     }
 
     @Test
-    fun snowMask_constants_areValid() {
-        assertEquals(14f, SnowMask.DEFAULT_RECOVERY_SPEED, 0.001f)
-        assertEquals(2.0f, SnowMask.DEFAULT_RECOVERY_DELAY, 0.001f)
+    fun snowflake_initialSpawn_isAboveScreen() {
+        val flake = Snowflake()
+        flake.reset(1080f, 1920f, 2.5f, isInitial = true)
+        assertTrue("Initial snowflake must start above the screen", flake.y <= 0f)
     }
 }
