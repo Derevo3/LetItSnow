@@ -18,6 +18,7 @@ import kotlin.math.sin
  * - [SnowbankStyle.PUFFY_CLOUDS]: Пышные округлые облачные шапки свежего снега.
  * - [SnowbankStyle.ICY_SHELF]: Кристальная светящаяся ледяная полка со слоистой каймой.
  * - [SnowbankStyle.CLASSIC]: Детализированный сглаженный сугроб с мягким зимним градиентом.
+ * При выборе темы «Алый» сугробы автоматически окрашиваются в кроваво-красные тона.
  */
 class SnowAccumulation {
 
@@ -71,6 +72,16 @@ class SnowAccumulation {
     private val backPath = Path()
     private val crestPath = Path()
 
+    // Шейдеры градиентов для обычного и алого/кровавого сугроба
+    private var smoothMainShaderNormal: Shader? = null
+    private var smoothMainShaderBloody: Shader? = null
+
+    private var puffyBodyShaderNormal: Shader? = null
+    private var puffyBodyShaderBloody: Shader? = null
+
+    private var iceBodyShaderNormal: Shader? = null
+    private var iceBodyShaderBloody: Shader? = null
+
     // Кисти для стиля «Плавные холмы» (SMOOTH_HILLS)
     private val smoothMainPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
@@ -92,13 +103,14 @@ class SnowAccumulation {
         style = Paint.Style.FILL
         isDither = true
     }
-    private val puffyHighlightPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val puffyBackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        color = 0x35FFFFFF.toInt()
+        color = 0x40A0C8F0.toInt()
     }
     private val puffyRimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
         color = 0xEEFFFFFF.toInt()
     }
 
@@ -150,11 +162,11 @@ class SnowAccumulation {
         tempSurfaceY = FloatArray(cols)
 
         smoothCrestPaint.strokeWidth = 2.4f * densityScale
-        puffyRimPaint.strokeWidth = 2.2f * densityScale
+        puffyRimPaint.strokeWidth = 2.4f * densityScale
         iceCrestPaint.strokeWidth = 3.0f * densityScale
 
         // Градиенты покрывают всю возможную высоту экрана, включая засыпание при разблокировке
-        smoothMainPaint.shader = LinearGradient(
+        smoothMainShaderNormal = LinearGradient(
             0f, 0f,
             0f, h,
             intArrayOf(
@@ -166,8 +178,21 @@ class SnowAccumulation {
             floatArrayOf(0f, 0.35f, 0.75f, 1.0f),
             Shader.TileMode.CLAMP
         )
+        smoothMainShaderBloody = LinearGradient(
+            0f, 0f,
+            0f, h,
+            intArrayOf(
+                0xFFFF6B81.toInt(),
+                0xFFEF4444.toInt(),
+                0xFF991B1B.toInt(),
+                0xFF450A0A.toInt()
+            ),
+            floatArrayOf(0f, 0.30f, 0.70f, 1.0f),
+            Shader.TileMode.CLAMP
+        )
+        smoothMainPaint.shader = smoothMainShaderNormal
 
-        puffyBodyPaint.shader = LinearGradient(
+        puffyBodyShaderNormal = LinearGradient(
             0f, 0f,
             0f, h,
             intArrayOf(
@@ -179,8 +204,21 @@ class SnowAccumulation {
             floatArrayOf(0f, 0.40f, 0.80f, 1.0f),
             Shader.TileMode.CLAMP
         )
+        puffyBodyShaderBloody = LinearGradient(
+            0f, 0f,
+            0f, h,
+            intArrayOf(
+                0xFFFFA4B3.toInt(),
+                0xFFE11D48.toInt(),
+                0xFF881337.toInt(),
+                0xFF4C0519.toInt()
+            ),
+            floatArrayOf(0f, 0.35f, 0.75f, 1.0f),
+            Shader.TileMode.CLAMP
+        )
+        puffyBodyPaint.shader = puffyBodyShaderNormal
 
-        iceBodyPaint.shader = LinearGradient(
+        iceBodyShaderNormal = LinearGradient(
             0f, 0f,
             0f, h,
             intArrayOf(
@@ -192,6 +230,19 @@ class SnowAccumulation {
             floatArrayOf(0f, 0.25f, 0.65f, 1.0f),
             Shader.TileMode.CLAMP
         )
+        iceBodyShaderBloody = LinearGradient(
+            0f, 0f,
+            0f, h,
+            intArrayOf(
+                0xFFFF859B.toInt(),
+                0xCCE11D48.toInt(),
+                0xAA991B1B.toInt(),
+                0x995A0B17.toInt()
+            ),
+            floatArrayOf(0f, 0.25f, 0.65f, 1.0f),
+            Shader.TileMode.CLAMP
+        )
+        iceBodyPaint.shader = iceBodyShaderNormal
 
         if (prevDensities.isNotEmpty() && prevCols > 0 && prevRows > 0) {
             for (r in 0 until rows) {
@@ -425,14 +476,15 @@ class SnowAccumulation {
     }
 
     /**
-     * Отрисовывает сугроб в соответствии с выбранным стилем [style].
+     * Отрисовывает сугроб в соответствии с выбранным стилем [style]
+     * с поддержкой кроваво-красного окраса при [isBloody] = true.
      */
-    fun draw(canvas: Canvas, style: SnowbankStyle = SnowbankStyle.SMOOTH_HILLS) {
+    fun draw(canvas: Canvas, style: SnowbankStyle = SnowbankStyle.SMOOTH_HILLS, isBloody: Boolean = false) {
         when (style) {
-            SnowbankStyle.CLASSIC -> drawClassic(canvas)
-            SnowbankStyle.SMOOTH_HILLS -> drawSmoothHills(canvas)
-            SnowbankStyle.PUFFY_CLOUDS -> drawPuffyClouds(canvas)
-            SnowbankStyle.ICY_SHELF -> drawIcyShelf(canvas)
+            SnowbankStyle.CLASSIC -> drawClassic(canvas, isBloody)
+            SnowbankStyle.SMOOTH_HILLS -> drawSmoothHills(canvas, isBloody)
+            SnowbankStyle.PUFFY_CLOUDS -> drawPuffyClouds(canvas, isBloody)
+            SnowbankStyle.ICY_SHELF -> drawIcyShelf(canvas, isBloody)
         }
     }
 
@@ -474,9 +526,19 @@ class SnowAccumulation {
         }
     }
 
-    private fun drawSmoothHills(canvas: Canvas) {
+    private fun drawSmoothHills(canvas: Canvas, isBloody: Boolean) {
         if (cols <= 1 || rows <= 0) return
         computeSmoothProfile(blurRadius = 6)
+
+        if (isBloody) {
+            smoothMainPaint.shader = smoothMainShaderBloody
+            smoothBackPaint.color = 0x667F1D1D.toInt()
+            smoothCrestPaint.color = 0xF5FF6B81.toInt()
+        } else {
+            smoothMainPaint.shader = smoothMainShaderNormal
+            smoothBackPaint.color = 0x48A0C8F0.toInt()
+            smoothCrestPaint.color = 0xF5FFFFFF.toInt()
+        }
 
         backPath.reset()
         backPath.moveTo(0f, height)
@@ -533,10 +595,51 @@ class SnowAccumulation {
         canvas.drawPath(crestPath, smoothCrestPaint)
     }
 
-    private fun drawPuffyClouds(canvas: Canvas) {
+    private fun drawPuffyClouds(canvas: Canvas, isBloody: Boolean) {
         if (cols <= 1 || rows <= 0) return
         computeSmoothProfile(blurRadius = 4)
 
+        if (isBloody) {
+            puffyBodyPaint.shader = puffyBodyShaderBloody
+            puffyBackPaint.color = 0x557F1D1D.toInt()
+            puffyRimPaint.color = 0xEEFFA4B3.toInt()
+        } else {
+            puffyBodyPaint.shader = puffyBodyShaderNormal
+            puffyBackPaint.color = 0x40A0C8F0.toInt()
+            puffyRimPaint.color = 0xEEFFFFFF.toInt()
+        }
+
+        // 1. Задний фоновый слой пышных снежных шапок (смещенный по фазе для объемного эффекта сугроба)
+        backPath.reset()
+        backPath.moveTo(0f, height)
+        val backStartY = (smoothSurfaceY[0] - 4f * densityScale).coerceAtMost(height)
+        backPath.lineTo(0f, backStartY)
+
+        val stepCols = (cols / 7).coerceIn(5, 10)
+        var prevX = 0f
+        var prevY = backStartY
+
+        // Смещение фазы на половину шага для фоновых шапок
+        var c = stepCols / 2
+        while (c < cols) {
+            val targetX = (c + 0.5f) * cellW
+            val targetY = (smoothSurfaceY[c] - 4f * densityScale).coerceIn(0f, height)
+            val midX = (prevX + targetX) * 0.5f
+            val crownY = (minOf(prevY, targetY) - 6f * densityScale).coerceAtLeast(0f)
+
+            backPath.quadTo(midX, crownY, targetX, targetY)
+            prevX = targetX
+            prevY = targetY
+            c += stepCols
+        }
+        val backEndY = (smoothSurfaceY[cols - 1] - 4f * densityScale).coerceAtMost(height)
+        backPath.lineTo(width, backEndY)
+        backPath.lineTo(width, height)
+        backPath.close()
+
+        canvas.drawPath(backPath, puffyBackPaint)
+
+        // 2. Передний основной слой пушистых округлых подушек
         mainPath.reset()
         crestPath.reset()
 
@@ -545,20 +648,19 @@ class SnowAccumulation {
         mainPath.lineTo(0f, startY)
         crestPath.moveTo(0f, startY)
 
-        val stepCols = (cols / 8).coerceIn(4, 9)
-        var prevX = 0f
-        var prevY = startY
+        prevX = 0f
+        prevY = startY
 
-        var c = stepCols
+        c = stepCols
         while (c < cols) {
             val targetX = (c + 0.5f) * cellW
             val targetY = smoothSurfaceY[c].coerceIn(0f, height)
 
             val midX = (prevX + targetX) * 0.5f
-            val moundPeakY = (minOf(prevY, targetY) - 5f * densityScale).coerceAtLeast(0f)
+            val crownY = (minOf(prevY, targetY) - 5f * densityScale).coerceAtLeast(0f)
 
-            mainPath.quadTo(midX, moundPeakY, targetX, targetY)
-            crestPath.quadTo(midX, moundPeakY, targetX, targetY)
+            mainPath.quadTo(midX, crownY, targetX, targetY)
+            crestPath.quadTo(midX, crownY, targetX, targetY)
 
             prevX = targetX
             prevY = targetY
@@ -572,22 +674,22 @@ class SnowAccumulation {
         mainPath.close()
 
         canvas.drawPath(mainPath, puffyBodyPaint)
-
-        var hCol = stepCols / 2
-        while (hCol < cols) {
-            val hx = (hCol + 0.5f) * cellW
-            val hy = smoothSurfaceY[hCol] - 2f * densityScale
-            val r = (stepCols * cellW * 0.55f).coerceAtLeast(15f)
-            canvas.drawCircle(hx, hy + r * 0.4f, r * 0.7f, puffyHighlightPaint)
-            hCol += stepCols
-        }
-
         canvas.drawPath(crestPath, puffyRimPaint)
     }
 
-    private fun drawIcyShelf(canvas: Canvas) {
+    private fun drawIcyShelf(canvas: Canvas, isBloody: Boolean) {
         if (cols <= 1 || rows <= 0) return
         computeSmoothProfile(blurRadius = 3)
+
+        if (isBloody) {
+            iceBodyPaint.shader = iceBodyShaderBloody
+            iceBackPaint.color = 0x55881337.toInt()
+            iceCrestPaint.color = 0xFFFF859B.toInt()
+        } else {
+            iceBodyPaint.shader = iceBodyShaderNormal
+            iceBackPaint.color = 0x3360A5FA.toInt()
+            iceCrestPaint.color = 0xFFE0F2FE.toInt()
+        }
 
         backPath.reset()
         backPath.moveTo(0f, height)
@@ -644,9 +746,9 @@ class SnowAccumulation {
     /**
      * СТИЛЬ «КЛАССИКА»: Детализированный сглаженный сугроб.
      * Использует непрерывную интерполяцию высоты снега, 7-точечный Гауссов фильтр,
-     * искрящуюся морозную текстуру и мягкий зимний градиент.
+     * искрящуюся морозную текстуру и мягкий зимний/кровавый градиент.
      */
-    fun drawClassic(canvas: Canvas) {
+    fun drawClassic(canvas: Canvas, isBloody: Boolean = false) {
         val bmp = gridBitmap ?: return
         if (bmp.isRecycled || cols == 0 || rows == 0) return
 
@@ -739,10 +841,21 @@ class SnowAccumulation {
                     val crestHighlight = if (depth < 2.2f) (1.0f - depth / 2.2f) * 16f else 0f
                     val microDetail = sin(c * 0.35f + r * 0.22f) * cos(c * 0.18f - r * 0.28f) * 3.5f
 
-                    // Переход от чистого искрящегося белого на гребне к благородному снежно-голубому в глубине
-                    val red = (255 - (36 * shadowRatio) + microDetail + crestHighlight).toInt().coerceIn(195, 255)
-                    val green = (255 - (20 * shadowRatio) + microDetail + crestHighlight).toInt().coerceIn(215, 255)
-                    val blue = 255
+                    val red: Int
+                    val green: Int
+                    val blue: Int
+
+                    if (isBloody) {
+                        // Кроваво-красный сугроб: от ярко-алого гребня с рубиновым отблеском к глубокому тёмно-красному в толще
+                        red = (245 - (80 * shadowRatio) + microDetail + crestHighlight).toInt().coerceIn(120, 255)
+                        green = (45 - (30 * shadowRatio) + microDetail * 0.5f).toInt().coerceIn(10, 80)
+                        blue = (55 - (35 * shadowRatio) + microDetail * 0.5f).toInt().coerceIn(15, 95)
+                    } else {
+                        // Переход от чистого искрящегося белого на гребне к благородному снежно-голубому в глубине
+                        red = (255 - (36 * shadowRatio) + microDetail + crestHighlight).toInt().coerceIn(195, 255)
+                        green = (255 - (20 * shadowRatio) + microDetail + crestHighlight).toInt().coerceIn(215, 255)
+                        blue = 255
+                    }
 
                     pixels[idx] = (alpha shl 24) or (red shl 16) or (green shl 8) or blue
                 }

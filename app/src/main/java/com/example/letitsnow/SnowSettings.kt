@@ -18,7 +18,15 @@ import java.io.IOException
 val Context.snowDataStore: DataStore<Preferences> by preferencesDataStore(name = "snow_settings")
 
 /**
- * Варианты внешнего вида падающих снежинок.
+ * Цветовые темы снегопада и сугробов.
+ */
+enum class SnowColorTheme(val title: String, val description: String) {
+    WHITE("Белый", "Классический чистый бело-голубой зимний снег"),
+    SCARLET("Алый", "Мистический алый снегопад и кроваво-красные сугробы")
+}
+
+/**
+ * Варианты формы и геометрии падающих снежинок.
  */
 enum class SnowflakeStyle(val title: String, val description: String) {
     FAIRYTALE("Сказочный", "90% микро-снежинок (1-3 dp), 8% хлопьев и 2% изящных кристаллов"),
@@ -30,7 +38,7 @@ enum class SnowflakeStyle(val title: String, val description: String) {
  */
 enum class SnowbankStyle(val title: String, val description: String) {
     SMOOTH_HILLS("Плавные холмы", "Шелковистые природные дюны с мягкими зимними тенями"),
-    PUFFY_CLOUDS("Пушистый", "Округлые пышные шапки только что выпавшего снега"),
+    PUFFY_CLOUDS("Пушистый", "Мягкие пышные шапки только что выпавшего снега"),
     ICY_SHELF("Ледяной", "Кристальная искрящаяся кромка со слоистой подсветкой"),
     CLASSIC("Классика", "Детализированный сглаженный сугроб с мягким зимним градиентом")
 }
@@ -47,6 +55,8 @@ data class SnowSettings(
     val isUnlockAccumulationEnabled: Boolean = true,
     val snowflakeSize: Float = DEFAULT_SNOWFLAKE_SIZE,
     val snowflakeStyle: SnowflakeStyle = SnowflakeStyle.FAIRYTALE,
+    val colorTheme: SnowColorTheme = SnowColorTheme.WHITE,
+    val isGlowEnabled: Boolean = false,
     val snowbankStyle: SnowbankStyle = SnowbankStyle.SMOOTH_HILLS,
     val useDetailedGraphics: Boolean = true
 ) {
@@ -87,6 +97,8 @@ class SnowSettingsRepository(private val context: Context) {
         val KEY_UNLOCK_ACCUMULATION = booleanPreferencesKey("unlock_accumulation_enabled")
         val KEY_SNOWFLAKE_SIZE = floatPreferencesKey("snowflake_size")
         val KEY_SNOWFLAKE_STYLE = stringPreferencesKey("snowflake_style")
+        val KEY_COLOR_THEME = stringPreferencesKey("snow_color_theme")
+        val KEY_GLOW_ENABLED = booleanPreferencesKey("snow_glow_enabled")
         val KEY_SNOWBANK_STYLE = stringPreferencesKey("snowbank_style")
         val KEY_USE_DETAILED_GRAPHICS = booleanPreferencesKey("use_detailed_graphics")
     }
@@ -103,9 +115,18 @@ class SnowSettingsRepository(private val context: Context) {
             }
         }
         .map { preferences ->
-            val styleFlake = preferences[PreferencesKeys.KEY_SNOWFLAKE_STYLE]?.let { name ->
-                try { SnowflakeStyle.valueOf(name) } catch (_: Exception) { null }
+            val legacyStyle = preferences[PreferencesKeys.KEY_SNOWFLAKE_STYLE]
+
+            val styleFlake = legacyStyle?.let { name ->
+                if (name == "BLOODY") SnowflakeStyle.FAIRYTALE
+                else try { SnowflakeStyle.valueOf(name) } catch (_: Exception) { null }
             } ?: SnowflakeStyle.FAIRYTALE
+
+            val colorTheme = preferences[PreferencesKeys.KEY_COLOR_THEME]?.let { name ->
+                try { SnowColorTheme.valueOf(name) } catch (_: Exception) { null }
+            } ?: if (legacyStyle == "BLOODY") SnowColorTheme.SCARLET else SnowColorTheme.WHITE
+
+            val isGlowEnabled = preferences[PreferencesKeys.KEY_GLOW_ENABLED] ?: false
 
             val styleBank = preferences[PreferencesKeys.KEY_SNOWBANK_STYLE]?.let { name ->
                 try { SnowbankStyle.valueOf(name) } catch (_: Exception) { null }
@@ -120,6 +141,8 @@ class SnowSettingsRepository(private val context: Context) {
                 isUnlockAccumulationEnabled = preferences[PreferencesKeys.KEY_UNLOCK_ACCUMULATION] ?: true,
                 snowflakeSize = preferences[PreferencesKeys.KEY_SNOWFLAKE_SIZE] ?: SnowSettings.DEFAULT_SNOWFLAKE_SIZE,
                 snowflakeStyle = styleFlake,
+                colorTheme = colorTheme,
+                isGlowEnabled = isGlowEnabled,
                 snowbankStyle = styleBank,
                 useDetailedGraphics = preferences[PreferencesKeys.KEY_USE_DETAILED_GRAPHICS] ?: true
             )
@@ -138,6 +161,8 @@ class SnowSettingsRepository(private val context: Context) {
             preferences[PreferencesKeys.KEY_UNLOCK_ACCUMULATION] = settings.isUnlockAccumulationEnabled
             preferences[PreferencesKeys.KEY_SNOWFLAKE_SIZE] = settings.snowflakeSize
             preferences[PreferencesKeys.KEY_SNOWFLAKE_STYLE] = settings.snowflakeStyle.name
+            preferences[PreferencesKeys.KEY_COLOR_THEME] = settings.colorTheme.name
+            preferences[PreferencesKeys.KEY_GLOW_ENABLED] = settings.isGlowEnabled
             preferences[PreferencesKeys.KEY_SNOWBANK_STYLE] = settings.snowbankStyle.name
             preferences[PreferencesKeys.KEY_USE_DETAILED_GRAPHICS] = settings.useDetailedGraphics
         }
@@ -188,6 +213,18 @@ class SnowSettingsRepository(private val context: Context) {
     suspend fun saveSnowflakeStyle(style: SnowflakeStyle) {
         context.snowDataStore.edit { preferences ->
             preferences[PreferencesKeys.KEY_SNOWFLAKE_STYLE] = style.name
+        }
+    }
+
+    suspend fun saveColorTheme(theme: SnowColorTheme) {
+        context.snowDataStore.edit { preferences ->
+            preferences[PreferencesKeys.KEY_COLOR_THEME] = theme.name
+        }
+    }
+
+    suspend fun saveGlowEnabled(enabled: Boolean) {
+        context.snowDataStore.edit { preferences ->
+            preferences[PreferencesKeys.KEY_GLOW_ENABLED] = enabled
         }
     }
 

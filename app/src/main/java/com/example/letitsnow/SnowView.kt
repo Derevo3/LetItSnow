@@ -17,7 +17,8 @@ import android.view.View
  * Слой 2 — физически накопившийся снег (двумерная сетка плотности), постепенно заполняющий
  * пространство снизу вверх и очищаемый пальцем с мягкими краями и валиками.
  *
- * Поддерживает множественные стили снежинок и стили сугроба, а также регулирование размера.
+ * Поддерживает множественные стили снежинок и стили сугроба, цветовую тему («Белый» / «Алый»),
+ * волшебное сияние, а также плавное регулирование размера.
  */
 class SnowView @JvmOverloads constructor(
     context: Context,
@@ -46,9 +47,19 @@ class SnowView @JvmOverloads constructor(
     var snowflakeSizeMultiplier: Float = SnowSettings.DEFAULT_SNOWFLAKE_SIZE
 
     /**
-     * Выбранный визуальный стиль падающих снежинок.
+     * Выбранный визуальный стиль падающих снежинок («Сказочный», «Хлопья»).
      */
     var snowflakeStyle: SnowflakeStyle = SnowflakeStyle.FAIRYTALE
+
+    /**
+     * Цветовая тема снегопада и сугробов («Белый», «Алый»).
+     */
+    var colorTheme: SnowColorTheme = SnowColorTheme.WHITE
+
+    /**
+     * Включено ли мягкое волшебное сияние вокруг снежинок.
+     */
+    var isGlowEnabled: Boolean = false
 
     /**
      * Выбранный визуальный стиль сугроба.
@@ -126,6 +137,12 @@ class SnowView @JvmOverloads constructor(
         textSize = 14f * density
         textAlign = Paint.Align.CENTER
         isFakeBoldText = true
+    }
+    private val shakeHintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xDDFFFFFF.toInt()
+        textSize = 12f * density
+        textAlign = Paint.Align.CENTER
+        setShadowLayer(4f * density, 0f, 1f * density, 0xCC000000.toInt())
     }
 
     private var isRunning = false
@@ -217,6 +234,8 @@ class SnowView @JvmOverloads constructor(
         snowAccumulation.setBaseSnowbankHeight(settings.snowbankHeight)
         snowflakeSizeMultiplier = settings.snowflakeSize
         snowflakeStyle = settings.snowflakeStyle
+        colorTheme = settings.colorTheme
+        isGlowEnabled = settings.isGlowEnabled
         snowbankStyle = settings.snowbankStyle
         useDetailedGraphics = settings.useDetailedGraphics
         invalidate()
@@ -257,29 +276,41 @@ class SnowView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        // Слой 1: Падающие снежинки с выбранным стилем
+        // Слой 1: Падающие снежинки с выбранным стилем, цветовой темой и сиянием
         val activeFlakeStyle = snowflakeStyle
+        val activeColorTheme = colorTheme
+        val activeGlow = isGlowEnabled
+
         for (i in 0 until snowflakes.size) {
             snowflakes[i].draw(
                 canvas = canvas,
                 paint = flakePaint,
                 density = density,
                 style = activeFlakeStyle,
+                colorTheme = activeColorTheme,
+                isGlowEnabled = activeGlow,
                 sizeMultiplier = snowflakeSizeMultiplier
             )
         }
 
-        // Слой 2: Накопившийся снег (сугроб) с выбранным стилем
+        // Слой 2: Накопившийся снег (сугроб) с выбранным стилем и цветом
         val activeBankStyle = snowbankStyle
-        snowAccumulation.draw(canvas, activeBankStyle)
+        val isBloody = activeColorTheme == SnowColorTheme.SCARLET
+        snowAccumulation.draw(canvas, activeBankStyle, isBloody)
 
         // Кнопка быстрого смахивания в интерактивном режиме оверлея
         if (isInteractive && isOverlayMode) {
+            dismissBtnBgPaint.color = if (isBloody) 0xDD3B0712.toInt() else 0xCC0F172A.toInt()
+            dismissBtnBorderPaint.color = if (isBloody) 0xAAF87171.toInt() else 0x8860A5FA.toInt()
             val r = 19f * density
             canvas.drawRoundRect(dismissButtonRect, r, r, dismissBtnBgPaint)
             canvas.drawRoundRect(dismissButtonRect, r, r, dismissBtnBorderPaint)
             val textY = dismissButtonRect.centerY() - ((dismissTextPaint.descent() + dismissTextPaint.ascent()) / 2f)
             canvas.drawText("Смахнуть снег ✕", dismissButtonRect.centerX(), textY, dismissTextPaint)
+
+            // Подсказка о возможности встряхивания устройства
+            val hintY = dismissButtonRect.bottom + 16f * density
+            canvas.drawText("или потрясите телефон \uD83D\uDCF3", dismissButtonRect.centerX(), hintY, shakeHintPaint)
         }
     }
 

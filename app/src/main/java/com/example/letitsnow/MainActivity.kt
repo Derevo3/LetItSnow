@@ -1,11 +1,16 @@
 package com.example.letitsnow
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.hardware.SensorManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -78,6 +83,36 @@ class MainActivity : ComponentActivity() {
                 snowView.applySettings(currentSettings)
             }
 
+            // Детектор встряхивания и вибрация для очистки снега потрясыванием
+            val sensorManager = remember {
+                context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
+            }
+            val vibrator = remember {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
+                    vibratorManager?.defaultVibrator
+                } else {
+                    @Suppress("DEPRECATION")
+                    context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+                }
+            }
+            val shakeDetector = remember(snowView) {
+                sensorManager?.let { sm ->
+                    ShakeDetector(sm) {
+                        snowView.accumulation.clearAllSnow()
+                        snowView.invalidate()
+                        vibrator?.let { v ->
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                v.vibrate(VibrationEffect.createOneShot(120, VibrationEffect.DEFAULT_AMPLITUDE))
+                            } else {
+                                @Suppress("DEPRECATION")
+                                v.vibrate(120)
+                            }
+                        }
+                    }
+                }
+            }
+
             var isSettingsOpen by remember { mutableStateOf(false) }
             var showPermissionDialog by remember { mutableStateOf(false) }
             var isPendingOverlayActivation by remember { mutableStateOf(false) }
@@ -137,11 +172,12 @@ class MainActivity : ComponentActivity() {
             }
 
             // Управление жизненным циклом анимации в фоне/на переднем плане внутри приложения
-            DisposableEffect(lifecycleOwner, snowView) {
+            DisposableEffect(lifecycleOwner, snowView, shakeDetector) {
                 val observer = LifecycleEventObserver { _, event ->
                     when (event) {
                         Lifecycle.Event.ON_RESUME -> {
                             snowView.start()
+                            shakeDetector?.start()
                             // Проверяем актуальное состояние разрешения на оверлей при возвращении в приложение
                             if (Settings.canDrawOverlays(context)) {
                                 if (isPendingOverlayActivation) {
@@ -158,12 +194,16 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         }
-                        Lifecycle.Event.ON_PAUSE -> snowView.pause()
+                        Lifecycle.Event.ON_PAUSE -> {
+                            shakeDetector?.stop()
+                            snowView.pause()
+                        }
                         else -> Unit
                     }
                 }
                 lifecycleOwner.lifecycle.addObserver(observer)
                 onDispose {
+                    shakeDetector?.stop()
                     lifecycleOwner.lifecycle.removeObserver(observer)
                 }
             }

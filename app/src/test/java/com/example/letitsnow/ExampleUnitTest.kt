@@ -24,6 +24,8 @@ class ExampleUnitTest {
         assertTrue(settings.isUnlockAccumulationEnabled)
         assertEquals(1.0f, settings.snowflakeSize, 0.001f)
         assertEquals(SnowflakeStyle.FAIRYTALE, settings.snowflakeStyle)
+        assertEquals(SnowColorTheme.WHITE, settings.colorTheme)
+        assertFalse(settings.isGlowEnabled)
         assertEquals(SnowbankStyle.SMOOTH_HILLS, settings.snowbankStyle)
         assertTrue(settings.useDetailedGraphics)
     }
@@ -52,8 +54,13 @@ class ExampleUnitTest {
     }
 
     @Test
-    fun snowSettings_styles_haveAllOptions() {
+    fun snowSettings_styles_and_colors_haveAllOptions() {
         assertEquals(2, SnowflakeStyle.entries.size)
+        assertEquals(2, SnowColorTheme.entries.size)
         assertEquals(4, SnowbankStyle.entries.size)
+        assertEquals("Белый", SnowColorTheme.WHITE.title)
+        assertEquals("Алый", SnowColorTheme.SCARLET.title)
+        assertEquals("Сказочный", SnowflakeStyle.FAIRYTALE.title)
+        assertEquals("Хлопья", SnowflakeStyle.FLUFFY.title)
     }
 }

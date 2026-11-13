@@ -13,9 +13,13 @@ import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.content.res.Configuration
 import android.graphics.PixelFormat
+import android.hardware.SensorManager
 import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
@@ -38,7 +42,7 @@ import kotlinx.coroutines.launch
  * Во время активного использования телефона оверлей работает в режиме сквозных касаний
  * (FLAG_NOT_TOUCHABLE). Во время блокировки экран не расходует батарею (анимация на паузе).
  * При разблокировке, если включена соответствующая настройка, экран засыпается снегом
- * и оверлей временно становится интерактивным для расчистки пальцем.
+ * и оверлей временно становится интерактивным для расчистки пальцем или встряхиванием телефона.
  */
 class SnowOverlayService : Service() {
 
@@ -98,6 +102,7 @@ class SnowOverlayService : Service() {
     private var currentSettings: SnowSettings = SnowSettings()
     private var lastScreenOffTime: Long = 0L
     private var unlockCheckJob: Job? = null
+    private var shakeDetector: ShakeDetector? = null
 
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -106,10 +111,11 @@ class SnowOverlayService : Service() {
 
             when (intent?.action) {
                 Intent.ACTION_SCREEN_OFF -> {
-                    // Экран погас: фиксируем время и останавливаем анимацию для 0% нагрузки
+                    // Экран погас: фиксируем время, останавливаем анимацию и акселерометр
                     lastScreenOffTime = SystemClock.elapsedRealtime()
                     unlockCheckJob?.cancel()
                     unlockCheckJob = null
+                    shakeDetector?.stop()
                     if (::snowView.isInitialized) {
                         snowView.pause()
                     }
@@ -200,12 +206,46 @@ class SnowOverlayService : Service() {
         settingsRepository = SnowSettingsRepository(this)
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
+        // Инициализируем детектор встряхивания телефона для расчистки сугроба
+        val sensorManager = getSystemService(Context.SENSOR_SERVICE) as? SensorManager
+        if (sensorManager != null) {
+            shakeDetector = ShakeDetector(sensorManager) {
+                handleShake()
+            }
+        }
+
         createNotificationChannel()
         startAsForeground()
 
         initOverlayView()
         registerScreenReceiver()
         observeSettings()
+    }
+
+    private fun handleShake() {
+        if (!::snowView.isInitialized || !snowView.isInteractive) return
+        triggerHapticFeedback()
+        snowView.accumulation.clearAllSnow()
+        snowView.invalidate()
+        setInteractiveMode(false)
+    }
+
+    private fun triggerHapticFeedback() {
+        try {
+            val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val vm = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
+                vm?.defaultVibrator
+            } else {
+                @Suppress("DEPRECATION")
+                getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator?.vibrate(VibrationEffect.createOneShot(45, VibrationEffect.DEFAULT_AMPLITUDE))
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator?.vibrate(45)
+            }
+        } catch (_: Exception) { }
     }
 
     private fun getRealScreenSize(): Pair<Int, Int> {
@@ -296,11 +336,13 @@ class SnowOverlayService : Service() {
         snowView.isInteractive = interactive
 
         if (interactive) {
-            // Разрешаем касания для очистки снега пальцем
+            // Разрешаем касания для очистки снега пальцем и включаем акселерометр
             layoutParams.flags = layoutParams.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
+            shakeDetector?.start()
         } else {
-            // Возвращаем полностью сквозной режим (все нажатия идут приложениям под снегом)
+            // Возвращаем полностью сквозной режим и отключаем акселерометр (0% расхода батареи)
             layoutParams.flags = layoutParams.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+            shakeDetector?.stop()
         }
 
         try {
@@ -452,6 +494,8 @@ class SnowOverlayService : Service() {
         isRunning = false
         unlockCheckJob?.cancel()
         unlockCheckJob = null
+        shakeDetector?.stop()
+        shakeDetector = null
 
         try {
             unregisterReceiver(screenReceiver)
