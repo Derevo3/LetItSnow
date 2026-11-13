@@ -21,7 +21,7 @@ class ExampleUnitTest {
         assertEquals(150, settings.intensity)
         assertEquals(1.0f, settings.accumulationRate, 0.001f)
         assertEquals(65f, settings.snowbankHeight, 0.001f)
-        assertFalse(settings.isLockScreenSnowEnabled)
+        assertTrue(settings.isUnlockAccumulationEnabled)
         assertEquals(1.0f, settings.snowflakeSize, 0.001f)
         assertEquals(SnowflakeStyle.FAIRYTALE, settings.snowflakeStyle)
         assertEquals(SnowbankStyle.SMOOTH_HILLS, settings.snowbankStyle)
@@ -53,7 +53,7 @@ class ExampleUnitTest {
 
     @Test
     fun snowSettings_styles_haveAllOptions() {
-        assertEquals(4, SnowflakeStyle.entries.size)
+        assertEquals(2, SnowflakeStyle.entries.size)
         assertEquals(4, SnowbankStyle.entries.size)
     }
 }

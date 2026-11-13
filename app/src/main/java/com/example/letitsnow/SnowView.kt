@@ -48,7 +48,7 @@ class SnowView @JvmOverloads constructor(
     /**
      * Выбранный визуальный стиль падающих снежинок.
      */
-    var snowflakeStyle: SnowflakeStyle = SnowflakeStyle.CRYSTALS
+    var snowflakeStyle: SnowflakeStyle = SnowflakeStyle.FAIRYTALE
 
     /**
      * Выбранный визуальный стиль сугроба.
@@ -258,7 +258,7 @@ class SnowView @JvmOverloads constructor(
         super.onDraw(canvas)
 
         // Слой 1: Падающие снежинки с выбранным стилем
-        val activeFlakeStyle = if (!useDetailedGraphics) SnowflakeStyle.CLASSIC else snowflakeStyle
+        val activeFlakeStyle = snowflakeStyle
         for (i in 0 until snowflakes.size) {
             snowflakes[i].draw(
                 canvas = canvas,
@@ -270,7 +270,7 @@ class SnowView @JvmOverloads constructor(
         }
 
         // Слой 2: Накопившийся снег (сугроб) с выбранным стилем
-        val activeBankStyle = if (!useDetailedGraphics) SnowbankStyle.CLASSIC else snowbankStyle
+        val activeBankStyle = snowbankStyle
         snowAccumulation.draw(canvas, activeBankStyle)
 
         // Кнопка быстрого смахивания в интерактивном режиме оверлея

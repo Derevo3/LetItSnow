@@ -36,8 +36,9 @@ import kotlinx.coroutines.launch
  * поверх всех приложений с помощью WindowManager (TYPE_APPLICATION_OVERLAY).
  *
  * Во время активного использования телефона оверлей работает в режиме сквозных касаний
- * (FLAG_NOT_TOUCHABLE). Во время блокировки экран засыпается снегом без расхода батареи.
- * При разблокировке оверлей становится интерактивным для расчистки сугроба пальцем.
+ * (FLAG_NOT_TOUCHABLE). Во время блокировки экран не расходует батарею (анимация на паузе).
+ * При разблокировке, если включена соответствующая настройка, экран засыпается снегом
+ * и оверлей временно становится интерактивным для расчистки пальцем.
  */
 class SnowOverlayService : Service() {
 
@@ -105,7 +106,7 @@ class SnowOverlayService : Service() {
 
             when (intent?.action) {
                 Intent.ACTION_SCREEN_OFF -> {
-                    // Телефон заблокирован / экран погас: фиксируем время и останавливаем анимацию для 0% нагрузки
+                    // Экран погас: фиксируем время и останавливаем анимацию для 0% нагрузки
                     lastScreenOffTime = SystemClock.elapsedRealtime()
                     unlockCheckJob?.cancel()
                     unlockCheckJob = null
@@ -115,24 +116,12 @@ class SnowOverlayService : Service() {
                 }
 
                 Intent.ACTION_SCREEN_ON -> {
-                    // Экран загорелся (показан экран блокировки или рабочий стол)
+                    // Экран загорелся
                     if (::snowView.isInitialized) {
                         snowView.start()
                     }
 
                     if (isLocked) {
-                        // Если включен снегопад на экране блокировки — запускаем прозрачный экран со снегом
-                        if (currentSettings.isLockScreenSnowEnabled) {
-                            val lockIntent = Intent(context, LockScreenSnowActivity::class.java).apply {
-                                addFlags(
-                                    Intent.FLAG_ACTIVITY_NEW_TASK or
-                                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                                    Intent.FLAG_ACTIVITY_SINGLE_TOP
-                                )
-                            }
-                            context?.startActivity(lockIntent)
-                        }
-
                         // Запускаем периодическую проверку снятия блокировки.
                         // Это решает проблему устройств со свайпом (без пароля), Smart Lock или Face Unlock,
                         // где система Android НЕ рассылает событие ACTION_USER_PRESENT.
@@ -148,7 +137,7 @@ class SnowOverlayService : Service() {
                             }
                         }
                     } else {
-                        // Экран включился уже разблокированным (например, датчик отпечатка пальца при выключенном экране)
+                        // Экран включился уже разблокированным (например, отпечаток пальца при погасшем экране)
                         handleDeviceUnlocked()
                     }
                 }
@@ -167,6 +156,12 @@ class SnowOverlayService : Service() {
 
         if (::snowView.isInitialized) {
             snowView.start()
+        }
+
+        // Если выключено создание сугроба при разблокировке, не засыпаем экран
+        if (!currentSettings.isUnlockAccumulationEnabled) {
+            lastScreenOffTime = 0L
+            return
         }
 
         // Если оверлей уже засыпан и находится в интерактивном режиме, не засыпаем повторно
@@ -262,8 +257,7 @@ class SnowOverlayService : Service() {
                 WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
-                WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS or
-                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
+                WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS
 
         layoutParams = WindowManager.LayoutParams(
             realW,

@@ -143,7 +143,7 @@ fun SnowSettingsMenu(
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             SnowflakeStyle.entries.forEach { style ->
                                 val isSelected = settings.snowflakeStyle == style
@@ -161,19 +161,16 @@ fun SnowSettingsMenu(
                                         )
                                         .clickable {
                                             onSettingsChanged(
-                                                settings.copy(
-                                                    snowflakeStyle = style,
-                                                    useDetailedGraphics = (style != SnowflakeStyle.CLASSIC || settings.snowbankStyle != SnowbankStyle.CLASSIC)
-                                                )
+                                                settings.copy(snowflakeStyle = style)
                                             )
                                         }
-                                        .padding(vertical = 8.dp),
+                                        .padding(vertical = 10.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
                                         text = style.title,
                                         color = if (isSelected) Color.White else Color(0xFFCBD5E1),
-                                        fontSize = 12.sp,
+                                        fontSize = 13.sp,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                         maxLines = 1
                                     )
@@ -228,10 +225,7 @@ fun SnowSettingsMenu(
                                         )
                                         .clickable {
                                             onSettingsChanged(
-                                                settings.copy(
-                                                    snowbankStyle = style,
-                                                    useDetailedGraphics = (settings.snowflakeStyle != SnowflakeStyle.CLASSIC || style != SnowbankStyle.CLASSIC)
-                                                )
+                                                settings.copy(snowbankStyle = style)
                                             )
                                         }
                                         .padding(vertical = 8.dp),
@@ -484,7 +478,7 @@ fun SnowSettingsMenu(
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                text = "Снегопад на рабочем столе и сугроб при разблокировке",
+                                text = "Снегопад на рабочем столе и поверх других приложений",
                                 color = Color(0xFF94A3B8),
                                 fontSize = 12.sp
                             )
@@ -501,7 +495,7 @@ fun SnowSettingsMenu(
                         )
                     }
 
-                    // Переключатель снегопада на экране блокировки
+                    // Переключатель создания сугроба при разблокировке
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -512,22 +506,22 @@ fun SnowSettingsMenu(
                     ) {
                         Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
                             Text(
-                                text = "Снег на экране блокировки",
+                                text = "Сугроб при разблокировке",
                                 color = Color.White,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                text = "Падающий снег поверх часов и экрана блокировки",
+                                text = "Засыпать экран снегом после включения для расчистки пальцем",
                                 color = Color(0xFF94A3B8),
                                 fontSize = 12.sp
                             )
                         }
                         Switch(
-                            checked = settings.isLockScreenSnowEnabled,
+                            checked = settings.isUnlockAccumulationEnabled,
                             onCheckedChange = { enabled ->
                                 onSettingsChanged(
-                                    settings.copy(isLockScreenSnowEnabled = enabled)
+                                    settings.copy(isUnlockAccumulationEnabled = enabled)
                                 )
                             },
                             colors = SwitchDefaults.colors(

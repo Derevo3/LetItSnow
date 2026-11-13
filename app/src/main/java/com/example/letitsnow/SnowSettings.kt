@@ -22,9 +22,7 @@ val Context.snowDataStore: DataStore<Preferences> by preferencesDataStore(name =
  */
 enum class SnowflakeStyle(val title: String, val description: String) {
     FAIRYTALE("Сказочный", "90% микро-снежинок (1-3 dp), 8% хлопьев и 2% изящных кристаллов"),
-    CRYSTALS("Кристаллы", "Изящные 6-лучевые ледяные дендриты с микро-веточками"),
-    FLUFFY("Хлопья", "Мягкие пушистые зимние хлопья"),
-    CLASSIC("Классика", "Оригинальные простые точки и круги")
+    FLUFFY("Хлопья", "Мягкие пушистые зимние хлопья")
 }
 
 /**
@@ -34,7 +32,7 @@ enum class SnowbankStyle(val title: String, val description: String) {
     SMOOTH_HILLS("Плавные холмы", "Шелковистые природные дюны с мягкими зимними тенями"),
     PUFFY_CLOUDS("Пушистый", "Округлые пышные шапки только что выпавшего снега"),
     ICY_SHELF("Ледяной", "Кристальная искрящаяся кромка со слоистой подсветкой"),
-    CLASSIC("Классика", "Оригинальный растровый сугроб с клеточным затенением")
+    CLASSIC("Классика", "Детализированный сглаженный сугроб с мягким зимним градиентом")
 }
 
 /**
@@ -46,7 +44,7 @@ data class SnowSettings(
     val accumulationRate: Float = DEFAULT_ACCUMULATION_RATE,
     val isOverlayEnabled: Boolean = false,
     val snowbankHeight: Float = DEFAULT_SNOWBANK_HEIGHT,
-    val isLockScreenSnowEnabled: Boolean = false,
+    val isUnlockAccumulationEnabled: Boolean = true,
     val snowflakeSize: Float = DEFAULT_SNOWFLAKE_SIZE,
     val snowflakeStyle: SnowflakeStyle = SnowflakeStyle.FAIRYTALE,
     val snowbankStyle: SnowbankStyle = SnowbankStyle.SMOOTH_HILLS,
@@ -86,7 +84,7 @@ class SnowSettingsRepository(private val context: Context) {
         val KEY_ACCUMULATION_RATE = floatPreferencesKey("snow_accumulation_rate")
         val KEY_OVERLAY_ENABLED = booleanPreferencesKey("snow_overlay_enabled")
         val KEY_SNOWBANK_HEIGHT = floatPreferencesKey("snowbank_height")
-        val KEY_LOCK_SCREEN_SNOW = booleanPreferencesKey("lock_screen_snow_enabled")
+        val KEY_UNLOCK_ACCUMULATION = booleanPreferencesKey("unlock_accumulation_enabled")
         val KEY_SNOWFLAKE_SIZE = floatPreferencesKey("snowflake_size")
         val KEY_SNOWFLAKE_STYLE = stringPreferencesKey("snowflake_style")
         val KEY_SNOWBANK_STYLE = stringPreferencesKey("snowbank_style")
@@ -119,7 +117,7 @@ class SnowSettingsRepository(private val context: Context) {
                 accumulationRate = preferences[PreferencesKeys.KEY_ACCUMULATION_RATE] ?: SnowSettings.DEFAULT_ACCUMULATION_RATE,
                 isOverlayEnabled = preferences[PreferencesKeys.KEY_OVERLAY_ENABLED] ?: false,
                 snowbankHeight = preferences[PreferencesKeys.KEY_SNOWBANK_HEIGHT] ?: SnowSettings.DEFAULT_SNOWBANK_HEIGHT,
-                isLockScreenSnowEnabled = preferences[PreferencesKeys.KEY_LOCK_SCREEN_SNOW] ?: false,
+                isUnlockAccumulationEnabled = preferences[PreferencesKeys.KEY_UNLOCK_ACCUMULATION] ?: true,
                 snowflakeSize = preferences[PreferencesKeys.KEY_SNOWFLAKE_SIZE] ?: SnowSettings.DEFAULT_SNOWFLAKE_SIZE,
                 snowflakeStyle = styleFlake,
                 snowbankStyle = styleBank,
@@ -137,7 +135,7 @@ class SnowSettingsRepository(private val context: Context) {
             preferences[PreferencesKeys.KEY_ACCUMULATION_RATE] = settings.accumulationRate
             preferences[PreferencesKeys.KEY_OVERLAY_ENABLED] = settings.isOverlayEnabled
             preferences[PreferencesKeys.KEY_SNOWBANK_HEIGHT] = settings.snowbankHeight
-            preferences[PreferencesKeys.KEY_LOCK_SCREEN_SNOW] = settings.isLockScreenSnowEnabled
+            preferences[PreferencesKeys.KEY_UNLOCK_ACCUMULATION] = settings.isUnlockAccumulationEnabled
             preferences[PreferencesKeys.KEY_SNOWFLAKE_SIZE] = settings.snowflakeSize
             preferences[PreferencesKeys.KEY_SNOWFLAKE_STYLE] = settings.snowflakeStyle.name
             preferences[PreferencesKeys.KEY_SNOWBANK_STYLE] = settings.snowbankStyle.name
@@ -175,9 +173,9 @@ class SnowSettingsRepository(private val context: Context) {
         }
     }
 
-    suspend fun saveLockScreenSnowEnabled(enabled: Boolean) {
+    suspend fun saveUnlockAccumulationEnabled(enabled: Boolean) {
         context.snowDataStore.edit { preferences ->
-            preferences[PreferencesKeys.KEY_LOCK_SCREEN_SNOW] = enabled
+            preferences[PreferencesKeys.KEY_UNLOCK_ACCUMULATION] = enabled
         }
     }
 

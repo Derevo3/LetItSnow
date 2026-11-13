@@ -162,7 +162,7 @@ data class Snowflake(
                 rotationSpeed = (Random.nextFloat() - 0.5f) * 45f
             }
             TYPE_CRYSTAL -> {
-                // Изящные шестилучевые кристаллы (4.5–6.8 dp) — встречаются редко
+                // Изящные шестилучевые кристаллы (4.5–6.8 dp) — встречаются редко (2%)
                 val minR = 2.5f * density
                 val maxR = 3.6f * density
                 radius = minR + depthZ * (maxR - minR)
@@ -198,7 +198,7 @@ data class Snowflake(
     }
 
     /**
-     * Отрисовка снежинки на Canvas с учетом стиля.
+     * Отрисовка снежинки на Canvas с учетом выбранного стиля.
      */
     fun draw(
         canvas: Canvas,
@@ -222,12 +222,6 @@ data class Snowflake(
             SnowflakeStyle.FAIRYTALE -> {
                 drawFairytale(canvas, paint, density, effRadius, currentAlpha, scaleX, scaleY, sizeMultiplier)
             }
-            SnowflakeStyle.CLASSIC -> {
-                drawClassic(canvas, paint, density, effRadius, currentAlpha, scaleX, scaleY)
-            }
-            SnowflakeStyle.CRYSTALS -> {
-                drawCrystals(canvas, paint, density, effRadius, currentAlpha, scaleX, scaleY, sizeMultiplier)
-            }
             SnowflakeStyle.FLUFFY -> {
                 drawFluffy(canvas, paint, effRadius, currentAlpha, scaleX, scaleY)
             }
@@ -235,7 +229,7 @@ data class Snowflake(
     }
 
     /**
-     * НОВЫЙ СТИЛЬ: FAIRYTALE SNOWFALL (Сказочный ночной снегопад)
+     * СТИЛЬ: FAIRYTALE SNOWFALL (Сказочный ночной снегопад)
      * - Чистый белый и холодный бело-голубой.
      * - Никаких пузырей, ярких колец и искусственных звёзд.
      * - 90% микро-снежинок (1-3 dp), 8% хлопьев и 2% изящных шестилучевых кристаллов.
@@ -345,96 +339,9 @@ data class Snowflake(
         }
     }
 
-    private fun drawClassic(
-        canvas: Canvas,
-        paint: Paint,
-        density: Float,
-        effRadius: Float,
-        currentAlpha: Int,
-        scaleX: Float,
-        scaleY: Float
-    ) {
-        paint.color = 0xFFFFFFFF.toInt()
-        when (type) {
-            TYPE_MICRO -> {
-                paint.style = Paint.Style.FILL
-                paint.alpha = currentAlpha
-                canvas.drawCircle(x, y, effRadius * scaleX, paint)
-            }
-            TYPE_FLAKE -> {
-                paint.style = Paint.Style.FILL
-                paint.alpha = currentAlpha / 3
-                canvas.drawCircle(x, y, effRadius * 1.4f * scaleX, paint)
-                paint.alpha = currentAlpha
-                canvas.drawCircle(x, y, effRadius * 0.7f * scaleX, paint)
-            }
-            else -> {
-                canvas.save()
-                canvas.translate(x, y)
-                canvas.rotate(rotation)
-                if (isLanding) canvas.scale(scaleX, scaleY)
-
-                paint.alpha = currentAlpha
-                paint.style = Paint.Style.FILL
-                canvas.drawCircle(0f, 0f, effRadius * 0.25f, paint)
-
-                paint.style = Paint.Style.STROKE
-                paint.strokeWidth = 1.0f * density
-                val r = effRadius * 0.9f
-                canvas.drawLine(-r, 0f, r, 0f, paint)
-                val cos60 = 0.5f * r
-                val sin60 = 0.866f * r
-                canvas.drawLine(-cos60, -sin60, cos60, sin60, paint)
-                canvas.drawLine(-cos60, sin60, cos60, -sin60, paint)
-
-                paint.style = Paint.Style.FILL
-                canvas.restore()
-            }
-        }
-    }
-
-    private fun drawCrystals(
-        canvas: Canvas,
-        paint: Paint,
-        density: Float,
-        effRadius: Float,
-        currentAlpha: Int,
-        scaleX: Float,
-        scaleY: Float,
-        sizeMultiplier: Float
-    ) {
-        val tiltCos = if (isLanding) 1.0f else (abs(cos(tiltAngle)) * 0.65f + 0.35f)
-        paint.color = color
-
-        canvas.save()
-        canvas.translate(x, y)
-        canvas.rotate(rotation)
-        canvas.scale(scaleX * tiltCos, scaleY)
-
-        paint.style = Paint.Style.STROKE
-        paint.strokeCap = Paint.Cap.ROUND
-        paint.strokeWidth = (0.85f * density * sizeMultiplier).coerceAtLeast(0.7f)
-        paint.alpha = currentAlpha
-
-        val r = effRadius * 1.15f
-        val twig = r * 0.50f
-        val twigDx = r * 0.16f
-        val twigDy = r * 0.20f
-
-        for (i in 0 until 6) {
-            canvas.drawLine(0f, 0f, r, 0f, paint)
-            canvas.drawLine(twig, 0f, twig - twigDx, twigDy, paint)
-            canvas.drawLine(twig, 0f, twig - twigDx, -twigDy, paint)
-            canvas.rotate(60f)
-        }
-
-        paint.style = Paint.Style.FILL
-        paint.alpha = currentAlpha
-        canvas.drawCircle(0f, 0f, effRadius * 0.22f, paint)
-
-        canvas.restore()
-    }
-
+    /**
+     * СТИЛЬ: FLUFFY (Мягкие пушистые хлопья)
+     */
     private fun drawFluffy(
         canvas: Canvas,
         paint: Paint,

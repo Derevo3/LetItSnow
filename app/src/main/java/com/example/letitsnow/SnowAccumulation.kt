@@ -17,7 +17,7 @@ import kotlin.math.sin
  * - [SnowbankStyle.SMOOTH_HILLS]: Шелковистые широкие природные холмы с мягкими тенями.
  * - [SnowbankStyle.PUFFY_CLOUDS]: Пышные округлые облачные шапки свежего снега.
  * - [SnowbankStyle.ICY_SHELF]: Кристальная светящаяся ледяная полка со слоистой каймой.
- * - [SnowbankStyle.CLASSIC]: Оригинальный растровый сугроб с клеточным затенением.
+ * - [SnowbankStyle.CLASSIC]: Детализированный сглаженный сугроб с мягким зимним градиентом.
  */
 class SnowAccumulation {
 
@@ -641,69 +641,107 @@ class SnowAccumulation {
         canvas.drawPath(crestPath, iceCrestPaint)
     }
 
+    /**
+     * СТИЛЬ «КЛАССИКА»: Детализированный сглаженный сугроб.
+     * Использует непрерывную интерполяцию высоты снега, 7-точечный Гауссов фильтр,
+     * искрящуюся морозную текстуру и мягкий зимний градиент.
+     */
     fun drawClassic(canvas: Canvas) {
         val bmp = gridBitmap ?: return
         if (bmp.isRecycled || cols == 0 || rows == 0) return
 
+        // 1. Сглаживание по горизонтали (7-точечный Гауссов фильтр)
         for (r in 0 until rows) {
             val rOffset = r * cols
             for (c in 0 until cols) {
+                val cM3 = if (c >= 3) c - 3 else 0
                 val cM2 = if (c >= 2) c - 2 else 0
                 val cM1 = if (c >= 1) c - 1 else 0
                 val cP1 = if (c < cols - 1) c + 1 else cols - 1
                 val cP2 = if (c < cols - 2) c + 2 else cols - 1
+                val cP3 = if (c < cols - 3) c + 3 else cols - 1
 
                 tempBlur[rOffset + c] =
-                    densities[rOffset + cM2] * 0.1f +
-                    densities[rOffset + cM1] * 0.2f +
-                    densities[rOffset + c] * 0.4f +
-                    densities[rOffset + cP1] * 0.2f +
-                    densities[rOffset + cP2] * 0.1f
+                    densities[rOffset + cM3] * 0.05f +
+                    densities[rOffset + cM2] * 0.11f +
+                    densities[rOffset + cM1] * 0.22f +
+                    densities[rOffset + c]   * 0.24f +
+                    densities[rOffset + cP1] * 0.22f +
+                    densities[rOffset + cP2] * 0.11f +
+                    densities[rOffset + cP3] * 0.05f
             }
         }
 
+        // 2. Сглаживание по вертикали (7-точечный Гауссов фильтр)
         for (c in 0 until cols) {
             for (r in 0 until rows) {
+                val rM3 = if (r >= 3) r - 3 else 0
                 val rM2 = if (r >= 2) r - 2 else 0
                 val rM1 = if (r >= 1) r - 1 else 0
                 val rP1 = if (r < rows - 1) r + 1 else rows - 1
                 val rP2 = if (r < rows - 2) r + 2 else rows - 1
+                val rP3 = if (r < rows - 3) r + 3 else rows - 1
 
                 visualDensities[r * cols + c] =
-                    tempBlur[rM2 * cols + c] * 0.1f +
-                    tempBlur[rM1 * cols + c] * 0.2f +
-                    tempBlur[r * cols + c] * 0.4f +
-                    tempBlur[rP1 * cols + c] * 0.2f +
-                    tempBlur[rP2 * cols + c] * 0.1f
+                    tempBlur[rM3 * cols + c] * 0.05f +
+                    tempBlur[rM2 * cols + c] * 0.11f +
+                    tempBlur[rM1 * cols + c] * 0.22f +
+                    tempBlur[r   * cols + c] * 0.24f +
+                    tempBlur[rP1 * cols + c] * 0.22f +
+                    tempBlur[rP2 * cols + c] * 0.11f +
+                    tempBlur[rP3 * cols + c] * 0.05f
             }
         }
 
+        // 3. Вычисление непрерывного (дробного) уровня поверхности для каждого столбца
         for (c in 0 until cols) {
-            var surfaceRow = rows
+            var surfaceRowF = rows.toFloat()
             for (r in 0 until rows) {
-                if (visualDensities[r * cols + c] > 0.05f) {
-                    surfaceRow = r
+                val vd = visualDensities[r * cols + c]
+                if (vd > 0.03f) {
+                    val prevVd = if (r > 0) visualDensities[(r - 1) * cols + c] else 0f
+                    val delta = vd - prevVd
+                    val frac = if (delta > 0.001f) ((0.03f - prevVd) / delta).coerceIn(0f, 1f) else 0f
+                    surfaceRowF = (r - 1) + frac
                     break
                 }
             }
+            rawSurfaceY[c] = surfaceRowF
+        }
 
+        // Сглаживание высоты гребня между соседними столбцами
+        for (c in 0 until cols) {
+            val cLeft = (c - 1).coerceAtLeast(0)
+            val cRight = (c + 1).coerceAtMost(cols - 1)
+            smoothSurfaceY[c] = rawSurfaceY[cLeft] * 0.25f + rawSurfaceY[c] * 0.50f + rawSurfaceY[cRight] * 0.25f
+        }
+
+        // 4. Отрисовка детализированной текстуры с мягкими градиентами и микроструктурой
+        for (c in 0 until cols) {
+            val surfF = smoothSurfaceY[c]
             for (r in 0 until rows) {
                 val idx = r * cols + c
                 val vd = visualDensities[idx]
 
-                if (vd <= 0.02f) {
+                if (vd <= 0.012f) {
                     pixels[idx] = 0
                 } else {
-                    val normD = ((vd - 0.02f) / 0.65f).coerceIn(0f, 1f)
+                    // Гладкая интерполяция альфы на кромке (S-образная кривая Эрмита)
+                    val normD = ((vd - 0.012f) / 0.42f).coerceIn(0f, 1f)
                     val smoothAlpha = normD * normD * (3f - 2f * normD)
                     val alpha = (smoothAlpha * 255f).toInt().coerceIn(0, 255)
 
-                    val depth = (r - surfaceRow).coerceAtLeast(0)
+                    // Непрерывная глубина снежного слоя
+                    val depth = (r - surfF).coerceAtLeast(0f)
                     val shadowRatio = (depth / 16f).coerceIn(0f, 1f)
-                    val microWave = (sin(c * 0.2f + r * 0.12f) * 4f).toInt()
 
-                    val red = (255 - (40 * shadowRatio) + microWave).toInt().coerceIn(200, 255)
-                    val green = (255 - (24 * shadowRatio) + microWave).toInt().coerceIn(215, 255)
+                    // Детализированная текстура: искрящаяся морозная микроструктура и мягкий градиент
+                    val crestHighlight = if (depth < 2.2f) (1.0f - depth / 2.2f) * 16f else 0f
+                    val microDetail = sin(c * 0.35f + r * 0.22f) * cos(c * 0.18f - r * 0.28f) * 3.5f
+
+                    // Переход от чистого искрящегося белого на гребне к благородному снежно-голубому в глубине
+                    val red = (255 - (36 * shadowRatio) + microDetail + crestHighlight).toInt().coerceIn(195, 255)
+                    val green = (255 - (20 * shadowRatio) + microDetail + crestHighlight).toInt().coerceIn(215, 255)
                     val blue = 255
 
                     pixels[idx] = (alpha shl 24) or (red shl 16) or (green shl 8) or blue
