@@ -1,9 +1,17 @@
 package com.example.letitsnow
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,8 +19,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -28,6 +39,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import kotlinx.coroutines.launch
@@ -52,7 +64,7 @@ class MainActivity : ComponentActivity() {
                 initial = SnowSettings()
             )
 
-            // Создаем и запоминаем SnowView
+            // Создаем и запоминаем SnowView для отображения внутри приложения
             val snowView = remember {
                 SnowView(context).apply {
                     applySettings(currentSettings)
@@ -64,11 +76,76 @@ class MainActivity : ComponentActivity() {
                 snowView.applySettings(currentSettings)
             }
 
-            // Управление жизненным циклом анимации в фоне/на переднем плане
+            var isSettingsOpen by remember { mutableStateOf(false) }
+            var showPermissionDialog by remember { mutableStateOf(false) }
+            var isPendingOverlayActivation by remember { mutableStateOf(false) }
+
+            // Лаунчер запроса разрешения на показ уведомлений (Android 13+)
+            val notificationPermissionLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.RequestPermission()
+            ) { isGranted ->
+                if (isGranted || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                    SnowOverlayService.start(context)
+                    coroutineScope.launch {
+                        settingsRepository.saveOverlayEnabled(true)
+                    }
+                }
+            }
+
+            // Функция запуска оверлей-сервиса с проверкой уведомлений
+            val launchOverlayService = {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED
+                ) {
+                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                } else {
+                    SnowOverlayService.start(context)
+                    coroutineScope.launch {
+                        settingsRepository.saveOverlayEnabled(true)
+                    }
+                }
+            }
+
+            // Лаунчер перехода в настройки разрешения отображения поверх окон
+            val overlayPermissionLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.StartActivityForResult()
+            ) {
+                if (Settings.canDrawOverlays(context)) {
+                    isPendingOverlayActivation = false
+                    launchOverlayService()
+                }
+            }
+
+            // Автоматический запуск службы, если оверлей включен в настройках
+            LaunchedEffect(currentSettings.isOverlayEnabled) {
+                if (currentSettings.isOverlayEnabled && Settings.canDrawOverlays(context) && !SnowOverlayService.isRunning) {
+                    SnowOverlayService.start(context)
+                }
+            }
+
+            // Управление жизненным циклом анимации в фоне/на переднем плане внутри приложения
             DisposableEffect(lifecycleOwner, snowView) {
                 val observer = LifecycleEventObserver { _, event ->
                     when (event) {
-                        Lifecycle.Event.ON_RESUME -> snowView.start()
+                        Lifecycle.Event.ON_RESUME -> {
+                            snowView.start()
+                            // Проверяем актуальное состояние разрешения на оверлей при возвращении в приложение
+                            if (Settings.canDrawOverlays(context)) {
+                                if (isPendingOverlayActivation) {
+                                    isPendingOverlayActivation = false
+                                    launchOverlayService()
+                                } else if (currentSettings.isOverlayEnabled && !SnowOverlayService.isRunning) {
+                                    SnowOverlayService.start(context)
+                                }
+                            } else {
+                                if (currentSettings.isOverlayEnabled) {
+                                    coroutineScope.launch {
+                                        settingsRepository.saveOverlayEnabled(false)
+                                    }
+                                }
+                            }
+                        }
                         Lifecycle.Event.ON_PAUSE -> snowView.pause()
                         else -> Unit
                     }
@@ -79,7 +156,22 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            var isSettingsOpen by remember { mutableStateOf(false) }
+            val toggleOverlay: (Boolean) -> Unit = { enabled ->
+                if (enabled) {
+                    if (!Settings.canDrawOverlays(context)) {
+                        isPendingOverlayActivation = true
+                        showPermissionDialog = true
+                    } else {
+                        launchOverlayService()
+                    }
+                } else {
+                    isPendingOverlayActivation = false
+                    SnowOverlayService.stop(context)
+                    coroutineScope.launch {
+                        settingsRepository.saveOverlayEnabled(false)
+                    }
+                }
+            }
 
             Box(modifier = Modifier.fillMaxSize()) {
                 // Отрисовка снегопада через существующий SnowView и Canvas
@@ -117,8 +209,48 @@ class MainActivity : ComponentActivity() {
                             settingsRepository.saveSettings(updated)
                         }
                     },
+                    onToggleOverlay = toggleOverlay,
                     onDismiss = { isSettingsOpen = false }
                 )
+
+                // Диалог с просьбой предоставить разрешение SYSTEM_ALERT_WINDOW
+                if (showPermissionDialog) {
+                    AlertDialog(
+                        onDismissRequest = {
+                            showPermissionDialog = false
+                            isPendingOverlayActivation = false
+                        },
+                        title = { Text("Отображение поверх других приложений") },
+                        text = {
+                            Text("Чтобы снегопад отображался поверх других окон и создавал сугроб при разблокировке телефона, необходимо включить разрешение в настройках системы.")
+                        },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    showPermissionDialog = false
+                                    isPendingOverlayActivation = true
+                                    val intent = Intent(
+                                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                        Uri.parse("package:${context.packageName}")
+                                    )
+                                    overlayPermissionLauncher.launch(intent)
+                                }
+                            ) {
+                                Text("Настройки")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(
+                                onClick = {
+                                    showPermissionDialog = false
+                                    isPendingOverlayActivation = false
+                                }
+                            ) {
+                                Text("Отмена")
+                            }
+                        }
+                    )
+                }
             }
         }
     }

@@ -39,4 +39,10 @@ class ExampleUnitTest {
         flake.reset(1080f, 1920f, 2.5f, isInitial = true)
         assertTrue("Initial snowflake must start above the screen", flake.y <= 0f)
     }
+
+    @Test
+    fun snowSettings_overlayEnabled_defaultsToFalse() {
+        val settings = SnowSettings()
+        assertFalse(settings.isOverlayEnabled)
+    }
 }

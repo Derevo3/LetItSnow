@@ -3,6 +3,7 @@ package com.example.letitsnow
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.floatPreferencesKey
@@ -21,11 +22,13 @@ val Context.snowDataStore: DataStore<Preferences> by preferencesDataStore(name =
  * @property fallSpeed Коэффициент скорости падения снежинок (0.1 .. 3.0, по умолчанию 1.0).
  * @property intensity Количество одновременно существующих снежинок (10 .. 300, по умолчанию 150).
  * @property accumulationRate Коэффициент скорости накопления снега (0.1 .. 3.0, по умолчанию 1.0).
+ * @property isOverlayEnabled Флаг активности снегопада поверх всех приложений (по умолчанию false).
  */
 data class SnowSettings(
     val fallSpeed: Float = DEFAULT_FALL_SPEED,
     val intensity: Int = DEFAULT_INTENSITY,
-    val accumulationRate: Float = DEFAULT_ACCUMULATION_RATE
+    val accumulationRate: Float = DEFAULT_ACCUMULATION_RATE,
+    val isOverlayEnabled: Boolean = false
 ) {
     companion object {
         const val MIN_FALL_SPEED = 0.1f
@@ -51,6 +54,7 @@ class SnowSettingsRepository(private val context: Context) {
         val KEY_FALL_SPEED = floatPreferencesKey("snow_fall_speed")
         val KEY_INTENSITY = intPreferencesKey("snow_intensity")
         val KEY_ACCUMULATION_RATE = floatPreferencesKey("snow_accumulation_rate")
+        val KEY_OVERLAY_ENABLED = booleanPreferencesKey("snow_overlay_enabled")
     }
 
     /**
@@ -68,7 +72,8 @@ class SnowSettingsRepository(private val context: Context) {
             SnowSettings(
                 fallSpeed = preferences[PreferencesKeys.KEY_FALL_SPEED] ?: SnowSettings.DEFAULT_FALL_SPEED,
                 intensity = preferences[PreferencesKeys.KEY_INTENSITY] ?: SnowSettings.DEFAULT_INTENSITY,
-                accumulationRate = preferences[PreferencesKeys.KEY_ACCUMULATION_RATE] ?: SnowSettings.DEFAULT_ACCUMULATION_RATE
+                accumulationRate = preferences[PreferencesKeys.KEY_ACCUMULATION_RATE] ?: SnowSettings.DEFAULT_ACCUMULATION_RATE,
+                isOverlayEnabled = preferences[PreferencesKeys.KEY_OVERLAY_ENABLED] ?: false
             )
         }
 
@@ -80,6 +85,7 @@ class SnowSettingsRepository(private val context: Context) {
             preferences[PreferencesKeys.KEY_FALL_SPEED] = settings.fallSpeed
             preferences[PreferencesKeys.KEY_INTENSITY] = settings.intensity
             preferences[PreferencesKeys.KEY_ACCUMULATION_RATE] = settings.accumulationRate
+            preferences[PreferencesKeys.KEY_OVERLAY_ENABLED] = settings.isOverlayEnabled
         }
     }
 
@@ -107,6 +113,15 @@ class SnowSettingsRepository(private val context: Context) {
     suspend fun saveAccumulationRate(accumulationRate: Float) {
         context.snowDataStore.edit { preferences ->
             preferences[PreferencesKeys.KEY_ACCUMULATION_RATE] = accumulationRate
+        }
+    }
+
+    /**
+     * Сохранение состояния отображения поверх приложений.
+     */
+    suspend fun saveOverlayEnabled(enabled: Boolean) {
+        context.snowDataStore.edit { preferences ->
+            preferences[PreferencesKeys.KEY_OVERLAY_ENABLED] = enabled
         }
     }
 }

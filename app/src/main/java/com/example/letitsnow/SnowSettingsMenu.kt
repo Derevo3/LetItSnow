@@ -26,6 +26,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -50,6 +52,7 @@ fun SnowSettingsMenu(
     isOpen: Boolean,
     settings: SnowSettings,
     onSettingsChanged: (SnowSettings) -> Unit,
+    onToggleOverlay: (Boolean) -> Unit,
     onDismiss: () -> Unit
 ) {
     if (!isOpen) return
@@ -224,6 +227,42 @@ fun SnowSettingsMenu(
                                 thumbColor = Color(0xFF93C5FD),
                                 activeTrackColor = Color(0xFF3B82F6),
                                 inactiveTrackColor = Color(0x333B82F6)
+                            )
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(2.dp))
+
+                    // Переключатель снегопада поверх всех приложений
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0x331E293B), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                            Text(
+                                text = "Поверх всех приложений",
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "Снегопад на рабочем столе и сугроб при разблокировке",
+                                color = Color(0xFF94A3B8),
+                                fontSize = 12.sp
+                            )
+                        }
+                        Switch(
+                            checked = settings.isOverlayEnabled,
+                            onCheckedChange = { onToggleOverlay(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color(0xFF93C5FD),
+                                checkedTrackColor = Color(0xFF2563EB),
+                                uncheckedThumbColor = Color(0xFF64748B),
+                                uncheckedTrackColor = Color(0xFF334155)
                             )
                         )
                     }
