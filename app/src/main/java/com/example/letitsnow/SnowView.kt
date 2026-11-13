@@ -16,6 +16,8 @@ import android.view.View
  * Слой 1 — плавно падающие снежинки (не зависят от касаний, не застывают в воздухе).
  * Слой 2 — физически накопившийся снег (двумерная сетка плотности), постепенно заполняющий
  * пространство снизу вверх и очищаемый пальцем с мягкими краями и валиками.
+ *
+ * Поддерживает множественные стили снежинок и стили сугроба, а также регулирование размера.
  */
 class SnowView @JvmOverloads constructor(
     context: Context,
@@ -39,13 +41,32 @@ class SnowView @JvmOverloads constructor(
     var accumulationRateMultiplier: Float = SnowSettings.DEFAULT_ACCUMULATION_RATE
 
     /**
+     * Масштаб размера снежинок (0.5 .. 2.5).
+     */
+    var snowflakeSizeMultiplier: Float = SnowSettings.DEFAULT_SNOWFLAKE_SIZE
+
+    /**
+     * Выбранный визуальный стиль падающих снежинок.
+     */
+    var snowflakeStyle: SnowflakeStyle = SnowflakeStyle.CRYSTALS
+
+    /**
+     * Выбранный визуальный стиль сугроба.
+     */
+    var snowbankStyle: SnowbankStyle = SnowbankStyle.SMOOTH_HILLS
+
+    /**
+     * Флаг использования улучшенной графики.
+     */
+    var useDetailedGraphics: Boolean = true
+
+    /**
      * Целевое количество одновременно отображаемых снежинок (10 .. 300).
      */
     var targetSnowflakeCount: Int = SnowSettings.DEFAULT_INTENSITY
         set(value) {
             field = value.coerceIn(SnowSettings.MIN_INTENSITY, SnowSettings.MAX_INTENSITY)
             if (width > 0 && height > 0) {
-                // При уменьшении интенсивности сразу удаляем лишние частицы из конца списка
                 if (snowflakes.size > field) {
                     while (snowflakes.size > field) {
                         snowflakes.removeAt(snowflakes.size - 1)
@@ -85,20 +106,18 @@ class SnowView @JvmOverloads constructor(
     private val snowAccumulation = SnowAccumulation()
     private val snowMask = SnowMask()
 
-    // Переиспользуемый Paint для отрисовки падающих снежинок (без аллокаций в onDraw)
     private val flakePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         style = Paint.Style.FILL
     }
 
-    // Элементы кнопки быстрого смахивания в интерактивном режиме
     private val dismissButtonRect = RectF()
     private val dismissBtnBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xCC0F172A.toInt() // Полупрозрачный темно-синий
+        color = 0xCC0F172A.toInt()
         style = Paint.Style.FILL
     }
     private val dismissBtnBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0x8860A5FA.toInt() // Ледяная кайма
+        color = 0x8860A5FA.toInt()
         style = Paint.Style.STROKE
         strokeWidth = 1.5f * density
     }
@@ -121,13 +140,11 @@ class SnowView @JvmOverloads constructor(
             if (!isRunning) return
 
             if (lastFrameTimeNanos > 0L) {
-                // Вычисляем дельту времени между кадрами (ограничиваем 0.1с для предотвращения скачков)
                 val dt = ((frameTimeNanos - lastFrameTimeNanos) / 1_000_000_000f).coerceIn(0f, 0.1f)
                 val w = width.toFloat()
                 val h = height.toFloat()
 
                 if (w > 0f && h > 0f) {
-                    // При увеличении интенсивности плавно добавляем новые частицы сверху (по 2 за кадр)
                     if (snowflakes.size < targetSnowflakeCount) {
                         val toAdd = minOf(2, targetSnowflakeCount - snowflakes.size)
                         repeat(toAdd) {
@@ -141,26 +158,22 @@ class SnowView @JvmOverloads constructor(
                         }
                     }
 
-                    // В активном оверлее снег не накапливается (только падает), пока телефон не заблокирован
-                    val effectiveAccumulation = if (isOverlayMode && !isInteractive) null else snowAccumulation
+                    snowAccumulation.allowGrowthAboveBase = !(isOverlayMode && !isInteractive)
 
-                    // Обновляем координаты падающих снежинок (Слой 1)
                     for (i in 0 until snowflakes.size) {
                         snowflakes[i].update(
                             dtSec = dt,
                             width = w,
                             height = h,
                             density = density,
-                            accumulation = effectiveAccumulation,
+                            accumulation = snowAccumulation,
                             fallSpeedMultiplier = fallSpeedMultiplier,
-                            accumulationMultiplier = accumulationRateMultiplier
+                            accumulationMultiplier = accumulationRateMultiplier,
+                            sizeMultiplier = snowflakeSizeMultiplier
                         )
                     }
 
-                    // Обновляем физику 2D сетки снега только если снег накапливается или интерактивен
-                    if (effectiveAccumulation != null) {
-                        snowAccumulation.update(dt)
-                    }
+                    snowAccumulation.update(dt)
 
                     invalidate()
                 }
@@ -187,7 +200,6 @@ class SnowView @JvmOverloads constructor(
             dismissButtonRect.set(left, top, left + btnW, top + btnH)
         }
 
-        // Устанавливаем чистый темный фон по умолчанию (без замороженного слоя поверх)
         if (isOverlayMode) {
             setBackgroundColor(Color.TRANSPARENT)
         } else if (background == null) {
@@ -202,28 +214,41 @@ class SnowView @JvmOverloads constructor(
         fallSpeedMultiplier = settings.fallSpeed
         targetSnowflakeCount = settings.intensity
         accumulationRateMultiplier = settings.accumulationRate
+        snowAccumulation.setBaseSnowbankHeight(settings.snowbankHeight)
+        snowflakeSizeMultiplier = settings.snowflakeSize
+        snowflakeStyle = settings.snowflakeStyle
+        snowbankStyle = settings.snowbankStyle
+        useDetailedGraphics = settings.useDetailedGraphics
+        invalidate()
     }
 
-    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-        super.onSizeChanged(w, h, oldw, oldh)
-        if (w > 0 && h > 0) {
-            snowMask.setSize(w.toFloat(), h.toFloat(), density)
-            snowAccumulation.setSize(w.toFloat(), h.toFloat(), density)
-            initSnowflakes(w.toFloat(), h.toFloat())
+    /**
+     * Явное обновление размеров холста под физический размер экрана (для оверлея).
+     */
+    fun updateCanvasSize(w: Float, h: Float) {
+        if (w > 0f && h > 0f) {
+            snowMask.setSize(w, h, density)
+            snowAccumulation.setSize(w, h, density)
+            initSnowflakes(w, h)
 
             val btnW = 160f * density
             val btnH = 38f * density
             val left = (w - btnW) / 2f
             val top = 48f * density
             dismissButtonRect.set(left, top, left + btnW, top + btnH)
+            invalidate()
         }
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        updateCanvasSize(w.toFloat(), h.toFloat())
     }
 
     private fun initSnowflakes(width: Float, height: Float) {
         snowflakes.clear()
         repeat(targetSnowflakeCount) {
             val flake = Snowflake()
-            // isInitial = true: все снежинки начинают сверху экрана (экран полностью чист)
             flake.reset(width, height, density, isInitial = true)
             snowflakes.add(flake)
         }
@@ -232,13 +257,21 @@ class SnowView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        // Слой 1: Падающие снежинки с визуальным разнообразием (точки, светящиеся хлопья, кристаллы)
+        // Слой 1: Падающие снежинки с выбранным стилем
+        val activeFlakeStyle = if (!useDetailedGraphics) SnowflakeStyle.CLASSIC else snowflakeStyle
         for (i in 0 until snowflakes.size) {
-            snowflakes[i].draw(canvas, flakePaint, density)
+            snowflakes[i].draw(
+                canvas = canvas,
+                paint = flakePaint,
+                density = density,
+                style = activeFlakeStyle,
+                sizeMultiplier = snowflakeSizeMultiplier
+            )
         }
 
-        // Слой 2: Накопившийся снег (сглаженная 2D сетка плотности с тенями и валиками)
-        snowAccumulation.draw(canvas)
+        // Слой 2: Накопившийся снег (сугроб) с выбранным стилем
+        val activeBankStyle = if (!useDetailedGraphics) SnowbankStyle.CLASSIC else snowbankStyle
+        snowAccumulation.draw(canvas, activeBankStyle)
 
         // Кнопка быстрого смахивания в интерактивном режиме оверлея
         if (isInteractive && isOverlayMode) {
@@ -256,7 +289,6 @@ class SnowView @JvmOverloads constructor(
             return false
         }
 
-        // Обработка клика по кнопке «Смахнуть снег»
         if (isInteractive && isOverlayMode && dismissButtonRect.contains(event.x, event.y)) {
             if (event.actionMasked == MotionEvent.ACTION_UP) {
                 snowAccumulation.clearAllSnow()
@@ -267,12 +299,10 @@ class SnowView @JvmOverloads constructor(
             return true
         }
 
-        // Палец убирает только накопившийся снег (сугроб)
         val handled = snowMask.onTouchEvent(event, snowAccumulation)
         if (handled) {
             invalidate()
             if (isOverlayMode && isInteractive) {
-                // Если пользователь стер большую часть накопившегося сугроба (от 70%)
                 if (snowAccumulation.getClearedRatio() >= 0.70f) {
                     snowAccumulation.clearAllSnow()
                     onSnowClearedListener?.invoke()
@@ -291,9 +321,6 @@ class SnowView @JvmOverloads constructor(
         return true
     }
 
-    /**
-     * Запуск или возобновление анимации снегопада.
-     */
     fun start() {
         if (!isRunning) {
             isRunning = true
@@ -303,9 +330,6 @@ class SnowView @JvmOverloads constructor(
         invalidate()
     }
 
-    /**
-     * Остановка анимации для экономии ресурсов батареи и процессора.
-     */
     fun pause() {
         if (isRunning) {
             isRunning = false
@@ -339,7 +363,7 @@ class SnowView @JvmOverloads constructor(
 
     override fun onWindowVisibilityChanged(visibility: Int) {
         super.onWindowVisibilityChanged(visibility)
-        if (isOverlayMode) return // Жизненным циклом оверлея управляет SnowOverlayService
+        if (isOverlayMode) return
         if (visibility == VISIBLE) {
             start()
         } else {
@@ -349,7 +373,7 @@ class SnowView @JvmOverloads constructor(
 
     override fun onVisibilityChanged(changedView: View, visibility: Int) {
         super.onVisibilityChanged(changedView, visibility)
-        if (isOverlayMode) return // Жизненным циклом оверлея управляет SnowOverlayService
+        if (isOverlayMode) return
         if (visibility == VISIBLE && windowVisibility == VISIBLE) {
             start()
         } else {

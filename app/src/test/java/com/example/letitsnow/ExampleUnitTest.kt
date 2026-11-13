@@ -1,7 +1,6 @@
 package com.example.letitsnow
 
 import org.junit.Test
-
 import org.junit.Assert.*
 
 /**
@@ -21,6 +20,12 @@ class ExampleUnitTest {
         assertEquals(1.0f, settings.fallSpeed, 0.001f)
         assertEquals(150, settings.intensity)
         assertEquals(1.0f, settings.accumulationRate, 0.001f)
+        assertEquals(65f, settings.snowbankHeight, 0.001f)
+        assertFalse(settings.isLockScreenSnowEnabled)
+        assertEquals(1.0f, settings.snowflakeSize, 0.001f)
+        assertEquals(SnowflakeStyle.FAIRYTALE, settings.snowflakeStyle)
+        assertEquals(SnowbankStyle.SMOOTH_HILLS, settings.snowbankStyle)
+        assertTrue(settings.useDetailedGraphics)
     }
 
     @Test
@@ -31,6 +36,12 @@ class ExampleUnitTest {
         assertEquals(300, SnowSettings.MAX_INTENSITY)
         assertEquals(0.1f, SnowSettings.MIN_ACCUMULATION_RATE, 0.001f)
         assertEquals(3.0f, SnowSettings.MAX_ACCUMULATION_RATE, 0.001f)
+        assertEquals(15f, SnowSettings.MIN_SNOWBANK_HEIGHT, 0.001f)
+        assertEquals(150f, SnowSettings.MAX_SNOWBANK_HEIGHT, 0.001f)
+        assertEquals(65f, SnowSettings.DEFAULT_SNOWBANK_HEIGHT, 0.001f)
+        assertEquals(0.5f, SnowSettings.MIN_SNOWFLAKE_SIZE, 0.001f)
+        assertEquals(2.5f, SnowSettings.MAX_SNOWFLAKE_SIZE, 0.001f)
+        assertEquals(1.0f, SnowSettings.DEFAULT_SNOWFLAKE_SIZE, 0.001f)
     }
 
     @Test
@@ -41,8 +52,8 @@ class ExampleUnitTest {
     }
 
     @Test
-    fun snowSettings_overlayEnabled_defaultsToFalse() {
-        val settings = SnowSettings()
-        assertFalse(settings.isOverlayEnabled)
+    fun snowSettings_styles_haveAllOptions() {
+        assertEquals(4, SnowflakeStyle.entries.size)
+        assertEquals(4, SnowbankStyle.entries.size)
     }
 }

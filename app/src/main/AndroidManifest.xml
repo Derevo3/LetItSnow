@@ -28,6 +28,15 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".LockScreenSnowActivity"
+            android:exported="false"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:theme="@style/Theme.LetItSnow.Transparent"
+            android:launchMode="singleTop"
+            android:excludeFromRecents="true" />
+
         <service
             android:name=".SnowOverlayService"
             android:enabled="true"

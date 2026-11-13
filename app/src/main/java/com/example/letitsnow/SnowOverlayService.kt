@@ -18,13 +18,16 @@ import android.os.IBinder
 import android.os.SystemClock
 import android.provider.Settings
 import android.view.Gravity
+import android.view.View
 import android.view.WindowManager
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -42,6 +45,7 @@ class SnowOverlayService : Service() {
         const val ACTION_START = "com.example.letitsnow.ACTION_START"
         const val ACTION_STOP = "com.example.letitsnow.ACTION_STOP"
         const val ACTION_WIPE = "com.example.letitsnow.ACTION_WIPE"
+        const val ACTION_UNLOCKED = "com.example.letitsnow.ACTION_UNLOCKED"
 
         private const val NOTIFICATION_CHANNEL_ID = "snow_overlay_channel"
         private const val NOTIFICATION_ID = 1001
@@ -66,6 +70,22 @@ class SnowOverlayService : Service() {
             }
             context.startService(intent)
         }
+
+        /**
+         * Уведомляет сервис о снятии блокировки экрана (пользователь разблокировал телефон).
+         */
+        fun onUnlocked(context: Context) {
+            val intent = Intent(context, SnowOverlayService::class.java).apply {
+                action = ACTION_UNLOCKED
+            }
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+            } catch (_: Exception) { }
+        }
     }
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -74,15 +94,21 @@ class SnowOverlayService : Service() {
     private lateinit var snowView: SnowView
     private lateinit var settingsRepository: SnowSettingsRepository
 
+    private var currentSettings: SnowSettings = SnowSettings()
     private var lastScreenOffTime: Long = 0L
+    private var unlockCheckJob: Job? = null
 
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+            val isLocked = keyguardManager?.isKeyguardLocked == true
+
             when (intent?.action) {
                 Intent.ACTION_SCREEN_OFF -> {
                     // Телефон заблокирован / экран погас: фиксируем время и останавливаем анимацию для 0% нагрузки
                     lastScreenOffTime = SystemClock.elapsedRealtime()
+                    unlockCheckJob?.cancel()
+                    unlockCheckJob = null
                     if (::snowView.isInitialized) {
                         snowView.pause()
                     }
@@ -93,27 +119,69 @@ class SnowOverlayService : Service() {
                     if (::snowView.isInitialized) {
                         snowView.start()
                     }
-                    // Если экрана блокировки нет (или он не заблокирован), сразу создаем сугроб
-                    if (keyguardManager?.isKeyguardLocked != true && lastScreenOffTime > 0L) {
-                        val elapsedSeconds = (SystemClock.elapsedRealtime() - lastScreenOffTime) / 1000f
-                        lastScreenOffTime = 0L
-                        triggerSnowAccumulation(elapsedSeconds)
+
+                    if (isLocked) {
+                        // Если включен снегопад на экране блокировки — запускаем прозрачный экран со снегом
+                        if (currentSettings.isLockScreenSnowEnabled) {
+                            val lockIntent = Intent(context, LockScreenSnowActivity::class.java).apply {
+                                addFlags(
+                                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                                    Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                )
+                            }
+                            context?.startActivity(lockIntent)
+                        }
+
+                        // Запускаем периодическую проверку снятия блокировки.
+                        // Это решает проблему устройств со свайпом (без пароля), Smart Lock или Face Unlock,
+                        // где система Android НЕ рассылает событие ACTION_USER_PRESENT.
+                        unlockCheckJob?.cancel()
+                        unlockCheckJob = serviceScope.launch {
+                            for (step in 0..75) { // Проверяем каждые 400мс до 30 секунд
+                                delay(400)
+                                val km = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+                                if (km?.isKeyguardLocked == false) {
+                                    handleDeviceUnlocked()
+                                    break
+                                }
+                            }
+                        }
+                    } else {
+                        // Экран включился уже разблокированным (например, датчик отпечатка пальца при выключенном экране)
+                        handleDeviceUnlocked()
                     }
                 }
 
                 Intent.ACTION_USER_PRESENT -> {
-                    // Пользователь снял устройство с блокировки
-                    if (::snowView.isInitialized) {
-                        snowView.start()
-                    }
-                    if (lastScreenOffTime > 0L) {
-                        val elapsedSeconds = (SystemClock.elapsedRealtime() - lastScreenOffTime) / 1000f
-                        lastScreenOffTime = 0L
-                        triggerSnowAccumulation(elapsedSeconds)
-                    }
+                    // Пользователь снял устройство с системной блокировки (ввел PIN / пароль)
+                    handleDeviceUnlocked()
                 }
             }
         }
+    }
+
+    private fun handleDeviceUnlocked() {
+        unlockCheckJob?.cancel()
+        unlockCheckJob = null
+
+        if (::snowView.isInitialized) {
+            snowView.start()
+        }
+
+        // Если оверлей уже засыпан и находится в интерактивном режиме, не засыпаем повторно
+        if (::snowView.isInitialized && snowView.isInteractive) {
+            return
+        }
+
+        val elapsedSeconds = if (lastScreenOffTime > 0L) {
+            val diff = (SystemClock.elapsedRealtime() - lastScreenOffTime) / 1000f
+            lastScreenOffTime = 0L
+            diff
+        } else {
+            15f // Гарантированный фолбэк для засыпания экрана
+        }
+        triggerSnowAccumulation(elapsedSeconds)
     }
 
     private fun triggerSnowAccumulation(elapsedSeconds: Float) {
@@ -145,15 +213,37 @@ class SnowOverlayService : Service() {
         observeSettings()
     }
 
+    private fun getRealScreenSize(): Pair<Int, Int> {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val bounds = windowManager.maximumWindowMetrics.bounds
+            Pair(bounds.width(), bounds.height())
+        } else {
+            val dm = android.util.DisplayMetrics()
+            @Suppress("DEPRECATION")
+            windowManager.defaultDisplay.getRealMetrics(dm)
+            Pair(dm.widthPixels, dm.heightPixels)
+        }
+    }
+
     private fun initOverlayView() {
         if (!Settings.canDrawOverlays(this)) {
             stopSelf()
             return
         }
 
+        val (realW, realH) = getRealScreenSize()
+
         snowView = SnowView(this).apply {
             isOverlayMode = true
             isInteractive = false
+            fitsSystemWindows = false
+            @Suppress("DEPRECATION")
+            systemUiVisibility = (
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
+                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+                View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+            )
+            updateCanvasSize(realW.toFloat(), realH.toFloat())
             onSnowClearedListener = {
                 // Когда пользователь расчистил снег, возвращаем сквозной режим
                 setInteractiveMode(false)
@@ -172,16 +262,31 @@ class SnowOverlayService : Service() {
                 WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS or
                 WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
 
         layoutParams = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.MATCH_PARENT,
+            realW,
+            realH,
             windowType,
             flags,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
+            x = 0
+            y = 0
+
+            // Разрешаем отрисовку во всю площадь экрана без отступов под системные панели (навигация/статус-бар)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                fitInsetsTypes = 0
+                fitInsetsSides = 0
+                layoutInDisplayCutoutMode =
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                @Suppress("DEPRECATION")
+                layoutInDisplayCutoutMode =
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
         }
 
         try {
@@ -214,6 +319,7 @@ class SnowOverlayService : Service() {
     private fun observeSettings() {
         serviceScope.launch {
             settingsRepository.settingsFlow.collectLatest { settings ->
+                currentSettings = settings
                 if (::snowView.isInitialized) {
                     snowView.applySettings(settings)
                 }
@@ -322,6 +428,10 @@ class SnowOverlayService : Service() {
                 }
             }
 
+            ACTION_UNLOCKED -> {
+                handleDeviceUnlocked()
+            }
+
             ACTION_START -> {
                 if (::snowView.isInitialized) {
                     snowView.start()
@@ -335,13 +445,20 @@ class SnowOverlayService : Service() {
         super.onConfigurationChanged(newConfig)
         try {
             if (::snowView.isInitialized && snowView.isAttachedToWindow) {
+                val (realW, realH) = getRealScreenSize()
+                layoutParams.width = realW
+                layoutParams.height = realH
                 windowManager.updateViewLayout(snowView, layoutParams)
+                snowView.updateCanvasSize(realW.toFloat(), realH.toFloat())
             }
         } catch (_: Exception) { }
     }
 
     override fun onDestroy() {
         isRunning = false
+        unlockCheckJob?.cancel()
+        unlockCheckJob = null
+
         try {
             unregisterReceiver(screenReceiver)
         } catch (_: Exception) { }

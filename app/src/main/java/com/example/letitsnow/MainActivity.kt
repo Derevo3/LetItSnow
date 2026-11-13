@@ -13,7 +13,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -79,6 +81,16 @@ class MainActivity : ComponentActivity() {
             var isSettingsOpen by remember { mutableStateOf(false) }
             var showPermissionDialog by remember { mutableStateOf(false) }
             var isPendingOverlayActivation by remember { mutableStateOf(false) }
+
+            // Функция полного выключения снегопада и выхода из приложения
+            val stopAndExitApp: () -> Unit = {
+                SnowOverlayService.stop(context)
+                coroutineScope.launch {
+                    settingsRepository.saveOverlayEnabled(false)
+                }
+                snowView.pause()
+                (context as? ComponentActivity)?.finish()
+            }
 
             // Лаунчер запроса разрешения на показ уведомлений (Android 13+)
             val notificationPermissionLauncher = rememberLauncherForActivityResult(
@@ -180,21 +192,42 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize()
                 )
 
-                // Кнопка с иконкой шестерёнки в верхнем правом углу
-                IconButton(
-                    onClick = { isSettingsOpen = true },
+                // Кнопки управления в верхнем правом углу
+                Row(
                     modifier = Modifier
                         .statusBarsPadding()
                         .align(Alignment.TopEnd)
-                        .padding(16.dp)
-                        .size(48.dp)
-                        .background(Color(0x660F172A), CircleShape)
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_settings),
-                        contentDescription = "Настройки снега",
-                        tint = Color.White
-                    )
+                    // Кнопка быстрого выключения приложения и снегопада
+                    IconButton(
+                        onClick = stopAndExitApp,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(Color(0x99DC2626), CircleShape)
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_power),
+                            contentDescription = "Выключить снег и выйти",
+                            tint = Color.White
+                        )
+                    }
+
+                    // Кнопка с иконкой шестерёнки для вызова настроек
+                    IconButton(
+                        onClick = { isSettingsOpen = true },
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(Color(0x660F172A), CircleShape)
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_settings),
+                            contentDescription = "Настройки снега",
+                            tint = Color.White
+                        )
+                    }
                 }
 
                 // Меню настроек в темной зимней стилистике
@@ -210,6 +243,7 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                     onToggleOverlay = toggleOverlay,
+                    onStopApp = stopAndExitApp,
                     onDismiss = { isSettingsOpen = false }
                 )
 

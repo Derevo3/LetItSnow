@@ -2,13 +2,21 @@ package com.example.letitsnow
 
 import android.graphics.Canvas
 import android.graphics.Paint
+import kotlin.math.abs
+import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
 /**
- * Модель отдельной снежинки в симуляции снегопада.
- * Поддерживает визуальное разнообразие (точки, светящиеся хлопья, ледяные кристаллы)
- * и плавный переход при приземлении на снег.
+ * Модель отдельной снежинки в концепции FAIRYTALE SNOWFALL («Сказочный ночной снегопад»).
+ *
+ * Распределение частиц:
+ * - 90% [TYPE_MICRO]: Крошечные белые точки и микроскопические снежные хлопья (1–3 dp).
+ * - 8%  [TYPE_FLAKE]: Небольшие различимые снежные хлопья (мягкие органические хлопья).
+ * - 2%  [TYPE_CRYSTAL]: Изящные, тонкие шестилучевые снежные кристаллы (воздушное кружево).
+ *
+ * Никаких пузырей, ярких колец, искусственных звёзд и грубых обводок.
+ * Полная поддержка индивидуального параллакса глубины, мягкого покачивания и переиспользования памяти.
  */
 data class Snowflake(
     var x: Float = 0f,
@@ -16,25 +24,32 @@ data class Snowflake(
     var radius: Float = 0f,
     var speedY: Float = 0f,
     var alpha: Int = 255,
+    var color: Int = 0xFFFFFFFF.toInt(),
     var swayRadius: Float = 0f,
     var swaySpeed: Float = 0f,
     var angle: Float = 0f,
+    var secondaryAngle: Float = 0f,
+    var secondarySpeed: Float = 0f,
     var baseX: Float = 0f,
-    var type: Int = TYPE_SOFT_DOT,
+    var type: Int = TYPE_MICRO,
+    var microVariant: Int = 0,
     var rotation: Float = 0f,
     var rotationSpeed: Float = 0f,
     var isLanding: Boolean = false,
-    var landingProgress: Float = 0f
+    var landingProgress: Float = 0f,
+    var tiltAngle: Float = 0f,
+    var tiltSpeed: Float = 0f,
+    var depthZ: Float = 0.5f // 0.0 (глубокий далекий фон) .. 1.0 (ближний план)
 ) {
     companion object {
-        const val TYPE_SOFT_DOT = 0    // Мягкие далекие белые точки
-        const val TYPE_GLOWING = 1     // Слегка размытые хлопья с ореолом
-        const val TYPE_CRYSTAL = 2     // Вращающиеся ледяные кристаллы
-        private const val LANDING_DURATION = 0.22f // ~220мс для плавного слияния со снегом
+        const val TYPE_MICRO = 0    // 90% — крошечные точки и микроскопические хлопья (1–3 dp)
+        const val TYPE_FLAKE = 1    // 8%  — небольшие различимые хлопья
+        const val TYPE_CRYSTAL = 2  // 2%  — изящные шестилучевые кристаллы
+        private const val LANDING_DURATION = 0.22f
     }
 
     /**
-     * Обновляет позицию снежинки за прошедшее время [dtSec] с учетом настроек скорости и накопления.
+     * Плавное обновление позиции снежинки с учетом индивидуального покачивания и гравитации.
      */
     fun update(
         dtSec: Float,
@@ -43,10 +58,10 @@ data class Snowflake(
         density: Float,
         accumulation: SnowAccumulation? = null,
         fallSpeedMultiplier: Float = 1f,
-        accumulationMultiplier: Float = 1f
+        accumulationMultiplier: Float = 1f,
+        sizeMultiplier: Float = 1f
     ) {
         if (isLanding) {
-            // Анимация плавного приземления: снежинка замедляется, расплющивается и растворяется в сугробе
             landingProgress += dtSec / LANDING_DURATION
             y += speedY * 0.1f * dtSec
             if (landingProgress >= 1f) {
@@ -55,104 +70,143 @@ data class Snowflake(
             return
         }
 
-        // Плавное движение вниз с учетом коэффициента скорости
+        // Вертикальное перемещение
         y += speedY * fallSpeedMultiplier * dtSec
 
-        // Горизонтальное отклонение / покачивание
+        // Естественное покачивание с двумя несоизмеримыми гармониками (исключает механическое однообразие)
         angle += swaySpeed * dtSec
-        x = baseX + sin(angle) * swayRadius
+        secondaryAngle += secondarySpeed * dtSec
+        x = baseX + sin(angle) * swayRadius + sin(secondaryAngle) * (swayRadius * 0.28f)
 
-        // Вращение для снежинок-кристаллов
-        if (type == TYPE_CRYSTAL) {
+        // Вращение и 3D-наклон
+        if (type != TYPE_MICRO) {
             rotation += rotationSpeed * dtSec
+            tiltAngle += tiltSpeed * dtSec
         }
 
-        // Высота поверхности снега в текущей точке X (двумерная сетка накопления)
         val surfaceY = accumulation?.getSurfaceY(x) ?: height
+        val effectiveRadius = radius * sizeMultiplier
 
-        // Столкновение с сугробом: плавный переход и передача массы в снежную сетку
-        if (y + radius >= surfaceY) {
+        // Соприкосновение с сугробом
+        if (y + effectiveRadius >= surfaceY) {
             isLanding = true
             landingProgress = 0f
-            accumulation?.addSnow(x, radius, accumulationMultiplier)
-        } else if (y - radius > height) {
-            accumulation?.addSnow(x, radius, accumulationMultiplier)
+            accumulation?.addSnow(x, effectiveRadius, accumulationMultiplier)
+        } else if (y - effectiveRadius > height) {
+            accumulation?.addSnow(x, effectiveRadius, accumulationMultiplier)
             reset(width, height, density, isInitial = false)
         }
 
-        // Плавный циклический перенос по горизонтали при выходе за пределы экрана
-        if (x + radius < 0f) {
-            baseX += width + radius * 2f
+        // Горизонтальный перенос при выходе за границы
+        if (x + effectiveRadius < 0f) {
+            baseX += width + effectiveRadius * 2f
             x = baseX + sin(angle) * swayRadius
-        } else if (x - radius > width) {
-            baseX -= width + radius * 2f
+        } else if (x - effectiveRadius > width) {
+            baseX -= width + effectiveRadius * 2f
             x = baseX + sin(angle) * swayRadius
         }
     }
 
     /**
-     * Инициализирует или сбрасывает свойства снежинки со случайными значениями
-     * и выбором типа для естественного визуального разнообразия.
+     * Инициализирует параметры снежинки со строгим соблюдением пропорций 90% / 8% / 2%
+     * и размеров преимущественно 1–3 dp.
      */
     fun reset(width: Float, height: Float, density: Float, isInitial: Boolean = false) {
         isLanding = false
         landingProgress = 0f
 
-        // Случайный тип: 45% мягкие точки, 35% светящиеся хлопья, 20% кристаллы
+        // Условное расстояние в пространстве (0.0 — глубина фона, 1.0 — передний план)
+        depthZ = Random.nextFloat()
+        microVariant = Random.nextInt(3)
+
+        // Распределение частиц согласно концепции FAIRYTALE SNOWFALL:
         val roll = Random.nextFloat()
         type = when {
-            roll < 0.45f -> TYPE_SOFT_DOT
-            roll < 0.80f -> TYPE_GLOWING
-            else -> TYPE_CRYSTAL
+            roll < 0.90f -> TYPE_MICRO   // 90%
+            roll < 0.98f -> TYPE_FLAKE   // 8%
+            else -> TYPE_CRYSTAL         // 2%
         }
 
         when (type) {
-            TYPE_SOFT_DOT -> {
-                val minR = 1.2f * density
-                val maxR = 2.6f * density
-                radius = minR + Random.nextFloat() * (maxR - minR)
-                speedY = (35f + Random.nextFloat() * 45f) * density
-                alpha = 85 + Random.nextInt(90)
+            TYPE_MICRO -> {
+                // Основная масса: крошечные снежинки 1–2.8 dp
+                val minR = 0.55f * density
+                val maxR = 1.35f * density
+                radius = minR + depthZ * (maxR - minR)
+
+                // Глубокий параллакс: далекие медленнее, ближние чуть быстрее
+                speedY = (22f + depthZ * 36f + Random.nextFloat() * 12f) * density
+                alpha = (70 + (depthZ * 145).toInt() + Random.nextInt(30)).coerceIn(65, 245)
+
+                // Оттенки: чистый белый, холодный бело-голубой, мягкий ледяной
+                color = when (Random.nextInt(4)) {
+                    0 -> 0xFFFFFFFF.toInt()
+                    1 -> 0xFFF2F7FC.toInt()
+                    2 -> 0xFFE2EFFD.toInt()
+                    else -> 0xFFD4E8FA.toInt()
+                }
+                rotation = 0f
+                rotationSpeed = 0f
             }
-            TYPE_GLOWING -> {
-                val minR = 2.8f * density
-                val maxR = 5.2f * density
-                radius = minR + Random.nextFloat() * (maxR - minR)
-                speedY = (55f + Random.nextFloat() * 55f) * density
-                alpha = 160 + Random.nextInt(95)
+            TYPE_FLAKE -> {
+                // Небольшие различимые хлопья (2.5–4.5 dp)
+                val minR = 1.45f * density
+                val maxR = 2.35f * density
+                radius = minR + depthZ * (maxR - minR)
+
+                speedY = (36f + depthZ * 28f + Random.nextFloat() * 14f) * density
+                alpha = (150 + Random.nextInt(85)).coerceIn(140, 245)
+                color = if (Random.nextBoolean()) 0xFFFFFFFF.toInt() else 0xFFF0F6FD.toInt()
+
+                rotation = Random.nextFloat() * 360f
+                rotationSpeed = (Random.nextFloat() - 0.5f) * 45f
             }
             TYPE_CRYSTAL -> {
-                val minR = 3.2f * density
-                val maxR = 5.5f * density
-                radius = minR + Random.nextFloat() * (maxR - minR)
-                speedY = (45f + Random.nextFloat() * 50f) * density
-                alpha = 180 + Random.nextInt(75)
+                // Изящные шестилучевые кристаллы (4.5–6.8 dp) — встречаются редко
+                val minR = 2.5f * density
+                val maxR = 3.6f * density
+                radius = minR + depthZ * (maxR - minR)
+
+                speedY = (30f + depthZ * 24f + Random.nextFloat() * 12f) * density
+                alpha = (180 + Random.nextInt(70)).coerceIn(170, 250)
+                color = 0xFFFFFFFF.toInt()
+
                 rotation = Random.nextFloat() * 360f
-                rotationSpeed = (Random.nextFloat() - 0.5f) * 100f
+                rotationSpeed = (Random.nextFloat() - 0.5f) * 55f
             }
         }
 
-        // Параметры горизонтального покачивания
-        swayRadius = (5f + Random.nextFloat() * 16f) * density
-        swaySpeed = 0.9f + Random.nextFloat() * 2.2f
-        angle = Random.nextFloat() * (2f * Math.PI.toFloat())
+        // Параметры покачивания
+        swayRadius = (2.5f + depthZ * 8f + Random.nextFloat() * 3f) * density
+        swaySpeed = 0.8f + Random.nextFloat() * 1.5f
+        secondarySpeed = swaySpeed * 1.618f // Золотое сечение для естественности
+
+        angle = Random.nextFloat() * 6.28f
+        secondaryAngle = Random.nextFloat() * 6.28f
+
+        tiltAngle = Random.nextFloat() * 6.28f
+        tiltSpeed = 0.8f + Random.nextFloat() * 1.8f
 
         baseX = Random.nextFloat() * width
         x = baseX + sin(angle) * swayRadius
 
         y = if (isInitial) {
-            // При первом запуске все снежинки начинают сверху экрана (экран чистый)
             -radius - (Random.nextFloat() * height * 0.75f)
         } else {
-            // При повторном появлении создаем чуть выше верхней границы экрана
-            -radius - (Random.nextFloat() * 40f * density)
+            -radius - (Random.nextFloat() * 30f * density)
         }
     }
 
     /**
-     * Отрисовка снежинки на Canvas с учетом ее типа, формы и эффекта приземления.
+     * Отрисовка снежинки на Canvas с учетом стиля.
      */
-    fun draw(canvas: Canvas, paint: Paint, density: Float) {
+    fun draw(
+        canvas: Canvas,
+        paint: Paint,
+        density: Float,
+        style: SnowflakeStyle = SnowflakeStyle.FAIRYTALE,
+        sizeMultiplier: Float = 1.0f
+    ) {
         val currentAlpha = if (isLanding) {
             (alpha * (1.0f - landingProgress)).toInt().coerceIn(0, 255)
         } else {
@@ -160,50 +214,258 @@ data class Snowflake(
         }
         if (currentAlpha <= 0) return
 
-        // Эффект легкого расплющивания при столкновении с поверхностью снега
+        val effRadius = radius * sizeMultiplier
         val scaleX = if (isLanding) 1.0f + landingProgress * 0.5f else 1.0f
         val scaleY = if (isLanding) 1.0f - landingProgress * 0.5f else 1.0f
 
+        when (style) {
+            SnowflakeStyle.FAIRYTALE -> {
+                drawFairytale(canvas, paint, density, effRadius, currentAlpha, scaleX, scaleY, sizeMultiplier)
+            }
+            SnowflakeStyle.CLASSIC -> {
+                drawClassic(canvas, paint, density, effRadius, currentAlpha, scaleX, scaleY)
+            }
+            SnowflakeStyle.CRYSTALS -> {
+                drawCrystals(canvas, paint, density, effRadius, currentAlpha, scaleX, scaleY, sizeMultiplier)
+            }
+            SnowflakeStyle.FLUFFY -> {
+                drawFluffy(canvas, paint, effRadius, currentAlpha, scaleX, scaleY)
+            }
+        }
+    }
+
+    /**
+     * НОВЫЙ СТИЛЬ: FAIRYTALE SNOWFALL (Сказочный ночной снегопад)
+     * - Чистый белый и холодный бело-голубой.
+     * - Никаких пузырей, ярких колец и искусственных звёзд.
+     * - 90% микро-снежинок (1-3 dp), 8% хлопьев и 2% изящных шестилучевых кристаллов.
+     */
+    private fun drawFairytale(
+        canvas: Canvas,
+        paint: Paint,
+        density: Float,
+        effRadius: Float,
+        currentAlpha: Int,
+        scaleX: Float,
+        scaleY: Float,
+        sizeMultiplier: Float
+    ) {
+        paint.color = color
+
         when (type) {
-            TYPE_SOFT_DOT -> {
+            TYPE_MICRO -> {
+                // 90%: Крошечные белые точки и микроскопические хлопья
                 paint.style = Paint.Style.FILL
-                paint.alpha = currentAlpha
-                canvas.drawCircle(x, y, radius * scaleX, paint)
+
+                when (microVariant) {
+                    0 -> {
+                        // Чистая четкая микро-точка
+                        paint.alpha = currentAlpha
+                        canvas.drawCircle(x, y, effRadius * scaleX, paint)
+                    }
+                    1 -> {
+                        // Мягкая микро-точка с естественным краем (без резких колец)
+                        paint.alpha = (currentAlpha * 0.35f).toInt()
+                        canvas.drawCircle(x, y, effRadius * 1.35f * scaleX, paint)
+                        paint.alpha = currentAlpha
+                        canvas.drawCircle(x, y, effRadius * 0.75f * scaleX, paint)
+                    }
+                    else -> {
+                        // Сдвоенный микро-комочек (две касающиеся микро-точки)
+                        paint.alpha = currentAlpha
+                        val subR = effRadius * 0.65f * scaleX
+                        val offset = subR * 0.55f
+                        canvas.drawCircle(x - offset, y, subR, paint)
+                        canvas.drawCircle(x + offset, y, subR, paint)
+                    }
+                }
             }
-            TYPE_GLOWING -> {
-                paint.style = Paint.Style.FILL
-                // Внешний мягкий ореол
-                paint.alpha = currentAlpha / 4
-                canvas.drawCircle(x, y, radius * 1.55f * scaleX, paint)
-                // Яркое ядро
-                paint.alpha = currentAlpha
-                canvas.drawCircle(x, y, radius * 0.75f * scaleX, paint)
-            }
-            TYPE_CRYSTAL -> {
+            TYPE_FLAKE -> {
+                // 8%: Небольшие различимые мягкие хлопья снега (органический вид)
                 canvas.save()
                 canvas.translate(x, y)
                 canvas.rotate(rotation)
-                if (isLanding) {
-                    canvas.scale(scaleX, scaleY)
+                if (isLanding) canvas.scale(scaleX, scaleY)
+
+                paint.style = Paint.Style.FILL
+
+                // Нежнейшая полупрозрачная подсветка без колец
+                paint.alpha = (currentAlpha * 0.20f).toInt()
+                canvas.drawCircle(0f, 0f, effRadius * 1.4f, paint)
+
+                // Центральное мягкое ядро
+                paint.alpha = currentAlpha
+                canvas.drawCircle(0f, 0f, effRadius * 0.62f, paint)
+
+                // 3 мягких лепестка вокруг ядра, формирующие форму снежного комочка
+                paint.alpha = (currentAlpha * 0.75f).toInt()
+                val petalDist = effRadius * 0.40f
+                val petalR = effRadius * 0.45f
+                canvas.drawCircle(petalDist, 0f, petalR, paint)
+                canvas.drawCircle(-petalDist * 0.5f, petalDist * 0.866f, petalR, paint)
+                canvas.drawCircle(-petalDist * 0.5f, -petalDist * 0.866f, petalR, paint)
+
+                canvas.restore()
+            }
+            TYPE_CRYSTAL -> {
+                // 2%: Изящные шестилучевые кристаллы (воздушное кружево)
+                val tiltCos = if (isLanding) 1.0f else (abs(cos(tiltAngle)) * 0.65f + 0.35f)
+
+                canvas.save()
+                canvas.translate(x, y)
+                canvas.rotate(rotation)
+                canvas.scale(scaleX * tiltCos, scaleY)
+
+                // Тонкие, воздушные лучи
+                paint.style = Paint.Style.STROKE
+                paint.strokeCap = Paint.Cap.ROUND
+                paint.strokeWidth = (0.75f * density * sizeMultiplier).coerceAtLeast(0.7f)
+                paint.alpha = currentAlpha
+
+                val r = effRadius * 1.15f
+                val twig = r * 0.50f
+                val twigDx = r * 0.15f
+                val twigDy = r * 0.18f
+
+                // 6 изящных лучей с тонкими V-веточками
+                for (i in 0 until 6) {
+                    canvas.drawLine(0f, 0f, r, 0f, paint)
+                    canvas.drawLine(twig, 0f, twig - twigDx, twigDy, paint)
+                    canvas.drawLine(twig, 0f, twig - twigDx, -twigDy, paint)
+                    canvas.rotate(60f)
                 }
+
+                // Крошечный центральный кристаллик
+                paint.style = Paint.Style.FILL
+                paint.alpha = currentAlpha
+                canvas.drawCircle(0f, 0f, effRadius * 0.20f, paint)
+
+                canvas.restore()
+            }
+        }
+    }
+
+    private fun drawClassic(
+        canvas: Canvas,
+        paint: Paint,
+        density: Float,
+        effRadius: Float,
+        currentAlpha: Int,
+        scaleX: Float,
+        scaleY: Float
+    ) {
+        paint.color = 0xFFFFFFFF.toInt()
+        when (type) {
+            TYPE_MICRO -> {
+                paint.style = Paint.Style.FILL
+                paint.alpha = currentAlpha
+                canvas.drawCircle(x, y, effRadius * scaleX, paint)
+            }
+            TYPE_FLAKE -> {
+                paint.style = Paint.Style.FILL
+                paint.alpha = currentAlpha / 3
+                canvas.drawCircle(x, y, effRadius * 1.4f * scaleX, paint)
+                paint.alpha = currentAlpha
+                canvas.drawCircle(x, y, effRadius * 0.7f * scaleX, paint)
+            }
+            else -> {
+                canvas.save()
+                canvas.translate(x, y)
+                canvas.rotate(rotation)
+                if (isLanding) canvas.scale(scaleX, scaleY)
 
                 paint.alpha = currentAlpha
                 paint.style = Paint.Style.FILL
-                canvas.drawCircle(0f, 0f, radius * 0.3f, paint)
+                canvas.drawCircle(0f, 0f, effRadius * 0.25f, paint)
 
-                // 6-лучевой ледяной кристаллик (3 перекрестные линии)
                 paint.style = Paint.Style.STROKE
-                paint.strokeWidth = 1.2f * density
-                val r = radius * 0.9f
+                paint.strokeWidth = 1.0f * density
+                val r = effRadius * 0.9f
                 canvas.drawLine(-r, 0f, r, 0f, paint)
                 val cos60 = 0.5f * r
                 val sin60 = 0.866f * r
                 canvas.drawLine(-cos60, -sin60, cos60, sin60, paint)
                 canvas.drawLine(-cos60, sin60, cos60, -sin60, paint)
 
-                paint.style = Paint.Style.FILL // Возвращаем стиль
+                paint.style = Paint.Style.FILL
                 canvas.restore()
             }
         }
+    }
+
+    private fun drawCrystals(
+        canvas: Canvas,
+        paint: Paint,
+        density: Float,
+        effRadius: Float,
+        currentAlpha: Int,
+        scaleX: Float,
+        scaleY: Float,
+        sizeMultiplier: Float
+    ) {
+        val tiltCos = if (isLanding) 1.0f else (abs(cos(tiltAngle)) * 0.65f + 0.35f)
+        paint.color = color
+
+        canvas.save()
+        canvas.translate(x, y)
+        canvas.rotate(rotation)
+        canvas.scale(scaleX * tiltCos, scaleY)
+
+        paint.style = Paint.Style.STROKE
+        paint.strokeCap = Paint.Cap.ROUND
+        paint.strokeWidth = (0.85f * density * sizeMultiplier).coerceAtLeast(0.7f)
+        paint.alpha = currentAlpha
+
+        val r = effRadius * 1.15f
+        val twig = r * 0.50f
+        val twigDx = r * 0.16f
+        val twigDy = r * 0.20f
+
+        for (i in 0 until 6) {
+            canvas.drawLine(0f, 0f, r, 0f, paint)
+            canvas.drawLine(twig, 0f, twig - twigDx, twigDy, paint)
+            canvas.drawLine(twig, 0f, twig - twigDx, -twigDy, paint)
+            canvas.rotate(60f)
+        }
+
+        paint.style = Paint.Style.FILL
+        paint.alpha = currentAlpha
+        canvas.drawCircle(0f, 0f, effRadius * 0.22f, paint)
+
+        canvas.restore()
+    }
+
+    private fun drawFluffy(
+        canvas: Canvas,
+        paint: Paint,
+        effRadius: Float,
+        currentAlpha: Int,
+        scaleX: Float,
+        scaleY: Float
+    ) {
+        val tiltCos = if (isLanding) 1.0f else (abs(cos(tiltAngle)) * 0.6f + 0.4f)
+        paint.color = color
+
+        canvas.save()
+        canvas.translate(x, y)
+        canvas.rotate(rotation)
+        canvas.scale(scaleX * tiltCos, scaleY)
+
+        paint.style = Paint.Style.FILL
+        paint.alpha = (currentAlpha * 0.15f).toInt()
+        canvas.drawCircle(0f, 0f, effRadius * 1.5f, paint)
+
+        paint.alpha = (currentAlpha * 0.70f).toInt()
+        val off = effRadius * 0.38f
+        val subR = effRadius * 0.45f
+        canvas.drawCircle(-off, 0f, subR, paint)
+        canvas.drawCircle(off, 0f, subR, paint)
+        canvas.drawCircle(0f, off, subR, paint)
+        canvas.drawCircle(0f, -off, subR, paint)
+
+        paint.alpha = currentAlpha
+        canvas.drawCircle(0f, 0f, effRadius * 0.52f, paint)
+
+        canvas.restore()
     }
 }

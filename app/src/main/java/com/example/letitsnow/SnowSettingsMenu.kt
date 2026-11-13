@@ -7,6 +7,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -19,11 +20,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
@@ -38,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -53,14 +60,16 @@ fun SnowSettingsMenu(
     settings: SnowSettings,
     onSettingsChanged: (SnowSettings) -> Unit,
     onToggleOverlay: (Boolean) -> Unit,
+    onStopApp: () -> Unit,
     onDismiss: () -> Unit
 ) {
     if (!isOpen) return
 
-    // Локальное состояние для мгновенного плавного отклика ползунков
     var fallSpeed by remember(settings.fallSpeed) { mutableFloatStateOf(settings.fallSpeed) }
     var intensity by remember(settings.intensity) { mutableIntStateOf(settings.intensity) }
     var accumulationRate by remember(settings.accumulationRate) { mutableFloatStateOf(settings.accumulationRate) }
+    var snowbankHeight by remember(settings.snowbankHeight) { mutableFloatStateOf(settings.snowbankHeight) }
+    var snowflakeSize by remember(settings.snowflakeSize) { mutableFloatStateOf(settings.snowflakeSize) }
 
     Box(
         modifier = Modifier
@@ -83,19 +92,20 @@ fun SnowSettingsMenu(
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
-                    ) { /* Предотвращаем закрытие при клике внутри карточки */ }
+                    ) { }
                     .navigationBarsPadding(),
                 shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = Color(0xF20B132B) // Глубокий темно-синий ночной зимний фон
+                    containerColor = Color(0xF20B132B)
                 ),
-                border = BorderStroke(1.dp, Color(0x3360A5FA)) // Тонкая ледяная кайма
+                border = BorderStroke(1.dp, Color(0x3360A5FA))
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 20.dp, vertical = 18.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     // Заголовок
                     Row(
@@ -111,7 +121,183 @@ fun SnowSettingsMenu(
                         )
                     }
 
-                    // 1. Ползунок скорости снегопада
+                    // 1. Выбор стиля снежинок
+                    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Стиль снежинок",
+                                color = Color(0xFFE2E8F0),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = settings.snowflakeStyle.title,
+                                color = Color(0xFF93C5FD),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            SnowflakeStyle.entries.forEach { style ->
+                                val isSelected = settings.snowflakeStyle == style
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .background(
+                                            if (isSelected) Color(0xFF2563EB) else Color(0x331E293B),
+                                            RoundedCornerShape(10.dp)
+                                        )
+                                        .border(
+                                            1.dp,
+                                            if (isSelected) Color(0xFF93C5FD) else Color(0x2264748B),
+                                            RoundedCornerShape(10.dp)
+                                        )
+                                        .clickable {
+                                            onSettingsChanged(
+                                                settings.copy(
+                                                    snowflakeStyle = style,
+                                                    useDetailedGraphics = (style != SnowflakeStyle.CLASSIC || settings.snowbankStyle != SnowbankStyle.CLASSIC)
+                                                )
+                                            )
+                                        }
+                                        .padding(vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = style.title,
+                                        color = if (isSelected) Color.White else Color(0xFFCBD5E1),
+                                        fontSize = 12.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
+
+                        Text(
+                            text = settings.snowflakeStyle.description,
+                            color = Color(0xFF94A3B8),
+                            fontSize = 12.sp
+                        )
+                    }
+
+                    // 2. Выбор стиля сугроба
+                    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Стиль сугроба",
+                                color = Color(0xFFE2E8F0),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = settings.snowbankStyle.title,
+                                color = Color(0xFF93C5FD),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            SnowbankStyle.entries.forEach { style ->
+                                val isSelected = settings.snowbankStyle == style
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .background(
+                                            if (isSelected) Color(0xFF2563EB) else Color(0x331E293B),
+                                            RoundedCornerShape(10.dp)
+                                        )
+                                        .border(
+                                            1.dp,
+                                            if (isSelected) Color(0xFF93C5FD) else Color(0x2264748B),
+                                            RoundedCornerShape(10.dp)
+                                        )
+                                        .clickable {
+                                            onSettingsChanged(
+                                                settings.copy(
+                                                    snowbankStyle = style,
+                                                    useDetailedGraphics = (settings.snowflakeStyle != SnowflakeStyle.CLASSIC || style != SnowbankStyle.CLASSIC)
+                                                )
+                                            )
+                                        }
+                                        .padding(vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = style.title,
+                                        color = if (isSelected) Color.White else Color(0xFFCBD5E1),
+                                        fontSize = 12.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
+
+                        Text(
+                            text = settings.snowbankStyle.description,
+                            color = Color(0xFF94A3B8),
+                            fontSize = 12.sp
+                        )
+                    }
+
+                    // 3. Ползунок размера снежинок
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Размер снежинок",
+                                color = Color(0xFFE2E8F0),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = String.format(Locale.US, "%.1fx", snowflakeSize),
+                                color = Color(0xFF93C5FD),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Slider(
+                            value = snowflakeSize,
+                            onValueChange = { newValue ->
+                                snowflakeSize = (newValue * 10).roundToInt() / 10f
+                                onSettingsChanged(
+                                    settings.copy(
+                                        fallSpeed = fallSpeed,
+                                        intensity = intensity,
+                                        accumulationRate = accumulationRate,
+                                        snowbankHeight = snowbankHeight,
+                                        snowflakeSize = snowflakeSize
+                                    )
+                                )
+                            },
+                            valueRange = SnowSettings.MIN_SNOWFLAKE_SIZE..SnowSettings.MAX_SNOWFLAKE_SIZE,
+                            colors = SliderDefaults.colors(
+                                thumbColor = Color(0xFF93C5FD),
+                                activeTrackColor = Color(0xFF3B82F6),
+                                inactiveTrackColor = Color(0x333B82F6)
+                            )
+                        )
+                    }
+
+                    // 4. Ползунок скорости снегопада
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -135,10 +321,12 @@ fun SnowSettingsMenu(
                             onValueChange = { newValue ->
                                 fallSpeed = (newValue * 10).roundToInt() / 10f
                                 onSettingsChanged(
-                                    SnowSettings(
+                                    settings.copy(
                                         fallSpeed = fallSpeed,
                                         intensity = intensity,
-                                        accumulationRate = accumulationRate
+                                        accumulationRate = accumulationRate,
+                                        snowbankHeight = snowbankHeight,
+                                        snowflakeSize = snowflakeSize
                                     )
                                 )
                             },
@@ -151,7 +339,7 @@ fun SnowSettingsMenu(
                         )
                     }
 
-                    // 2. Ползунок интенсивности снегопада
+                    // 5. Ползунок интенсивности снегопада
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -175,10 +363,12 @@ fun SnowSettingsMenu(
                             onValueChange = { newValue ->
                                 intensity = newValue.roundToInt()
                                 onSettingsChanged(
-                                    SnowSettings(
+                                    settings.copy(
                                         fallSpeed = fallSpeed,
                                         intensity = intensity,
-                                        accumulationRate = accumulationRate
+                                        accumulationRate = accumulationRate,
+                                        snowbankHeight = snowbankHeight,
+                                        snowflakeSize = snowflakeSize
                                     )
                                 )
                             },
@@ -191,7 +381,7 @@ fun SnowSettingsMenu(
                         )
                     }
 
-                    // 3. Ползунок скорости накопления снега
+                    // 6. Ползунок скорости накопления снега
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -215,14 +405,58 @@ fun SnowSettingsMenu(
                             onValueChange = { newValue ->
                                 accumulationRate = (newValue * 10).roundToInt() / 10f
                                 onSettingsChanged(
-                                    SnowSettings(
+                                    settings.copy(
                                         fallSpeed = fallSpeed,
                                         intensity = intensity,
-                                        accumulationRate = accumulationRate
+                                        accumulationRate = accumulationRate,
+                                        snowbankHeight = snowbankHeight,
+                                        snowflakeSize = snowflakeSize
                                     )
                                 )
                             },
                             valueRange = SnowSettings.MIN_ACCUMULATION_RATE..SnowSettings.MAX_ACCUMULATION_RATE,
+                            colors = SliderDefaults.colors(
+                                thumbColor = Color(0xFF93C5FD),
+                                activeTrackColor = Color(0xFF3B82F6),
+                                inactiveTrackColor = Color(0x333B82F6)
+                            )
+                        )
+                    }
+
+                    // 7. Ползунок высоты сугроба
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Высота сугроба",
+                                color = Color(0xFFE2E8F0),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = "${snowbankHeight.roundToInt()} dp",
+                                color = Color(0xFF93C5FD),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Slider(
+                            value = snowbankHeight,
+                            onValueChange = { newValue ->
+                                snowbankHeight = newValue.roundToInt().toFloat()
+                                onSettingsChanged(
+                                    settings.copy(
+                                        fallSpeed = fallSpeed,
+                                        intensity = intensity,
+                                        accumulationRate = accumulationRate,
+                                        snowbankHeight = snowbankHeight,
+                                        snowflakeSize = snowflakeSize
+                                    )
+                                )
+                            },
+                            valueRange = SnowSettings.MIN_SNOWBANK_HEIGHT..SnowSettings.MAX_SNOWBANK_HEIGHT,
                             colors = SliderDefaults.colors(
                                 thumbColor = Color(0xFF93C5FD),
                                 activeTrackColor = Color(0xFF3B82F6),
@@ -267,24 +501,87 @@ fun SnowSettingsMenu(
                         )
                     }
 
+                    // Переключатель снегопада на экране блокировки
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0x331E293B), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                            Text(
+                                text = "Снег на экране блокировки",
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "Падающий снег поверх часов и экрана блокировки",
+                                color = Color(0xFF94A3B8),
+                                fontSize = 12.sp
+                            )
+                        }
+                        Switch(
+                            checked = settings.isLockScreenSnowEnabled,
+                            onCheckedChange = { enabled ->
+                                onSettingsChanged(
+                                    settings.copy(isLockScreenSnowEnabled = enabled)
+                                )
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color(0xFF93C5FD),
+                                checkedTrackColor = Color(0xFF2563EB),
+                                uncheckedThumbColor = Color(0xFF64748B),
+                                uncheckedTrackColor = Color(0xFF334155)
+                            )
+                        )
+                    }
+
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    // Кнопка «Закрыть»
+                    // Кнопка «Выключить снег и выйти»
                     Button(
-                        onClick = onDismiss,
+                        onClick = onStopApp,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(48.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF1D4ED8),
+                            containerColor = Color(0xFFDC2626),
                             contentColor = Color.White
                         ),
                         shape = RoundedCornerShape(12.dp)
                     ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_power),
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Закрыть",
-                            fontSize = 16.sp,
+                            text = "Выключить снег и выйти",
+                            fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    // Кнопка «Закрыть настройки»
+                    Button(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(46.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0x333B82F6),
+                            contentColor = Color(0xFF93C5FD)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = "Закрыть настройки",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 }
