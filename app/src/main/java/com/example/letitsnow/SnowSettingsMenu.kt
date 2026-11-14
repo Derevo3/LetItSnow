@@ -59,6 +59,7 @@ fun SnowSettingsMenu(
     isOpen: Boolean,
     settings: SnowSettings,
     onSettingsChanged: (SnowSettings) -> Unit,
+    onSaveSettings: (SnowSettings) -> Unit = onSettingsChanged,
     onToggleOverlay: (Boolean) -> Unit,
     onStopApp: () -> Unit,
     onDismiss: () -> Unit
@@ -70,6 +71,21 @@ fun SnowSettingsMenu(
     var accumulationRate by remember(settings.accumulationRate) { mutableFloatStateOf(settings.accumulationRate) }
     var snowbankHeight by remember(settings.snowbankHeight) { mutableFloatStateOf(settings.snowbankHeight) }
     var snowflakeSize by remember(settings.snowflakeSize) { mutableFloatStateOf(settings.snowflakeSize) }
+
+    fun buildCurrentSettings(): SnowSettings {
+        return settings.copy(
+            fallSpeed = fallSpeed,
+            intensity = intensity,
+            accumulationRate = accumulationRate,
+            snowbankHeight = snowbankHeight,
+            snowflakeSize = snowflakeSize
+        )
+    }
+
+    val handleDismiss = {
+        onSaveSettings(buildCurrentSettings())
+        onDismiss()
+    }
 
     val isScarlet = settings.colorTheme == SnowColorTheme.SCARLET
     val primaryAccent = if (isScarlet) Color(0xFFF87171) else Color(0xFF93C5FD)
@@ -84,7 +100,7 @@ fun SnowSettingsMenu(
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
-            ) { onDismiss() }
+            ) { handleDismiss() }
     ) {
         AnimatedVisibility(
             visible = isOpen,
@@ -167,9 +183,9 @@ fun SnowSettingsMenu(
                                         .background(btnBg, RoundedCornerShape(10.dp))
                                         .border(1.dp, btnBorder, RoundedCornerShape(10.dp))
                                         .clickable {
-                                            onSettingsChanged(
-                                                settings.copy(colorTheme = theme)
-                                            )
+                                            val updated = buildCurrentSettings().copy(colorTheme = theme)
+                                            onSettingsChanged(updated)
+                                            onSaveSettings(updated)
                                         }
                                         .padding(vertical = 10.dp),
                                     contentAlignment = Alignment.Center
@@ -227,9 +243,9 @@ fun SnowSettingsMenu(
                                         .background(btnBg, RoundedCornerShape(10.dp))
                                         .border(1.dp, btnBorder, RoundedCornerShape(10.dp))
                                         .clickable {
-                                            onSettingsChanged(
-                                                settings.copy(snowflakeStyle = style)
-                                            )
+                                            val updated = buildCurrentSettings().copy(snowflakeStyle = style)
+                                            onSettingsChanged(updated)
+                                            onSaveSettings(updated)
                                         }
                                         .padding(vertical = 10.dp),
                                     contentAlignment = Alignment.Center
@@ -277,9 +293,9 @@ fun SnowSettingsMenu(
                         Switch(
                             checked = settings.isGlowEnabled,
                             onCheckedChange = { enabled ->
-                                onSettingsChanged(
-                                    settings.copy(isGlowEnabled = enabled)
-                                )
+                                val updated = buildCurrentSettings().copy(isGlowEnabled = enabled)
+                                onSettingsChanged(updated)
+                                onSaveSettings(updated)
                             },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = primaryAccent,
@@ -325,9 +341,9 @@ fun SnowSettingsMenu(
                                         .background(btnBg, RoundedCornerShape(10.dp))
                                         .border(1.dp, btnBorder, RoundedCornerShape(10.dp))
                                         .clickable {
-                                            onSettingsChanged(
-                                                settings.copy(snowbankStyle = style)
-                                            )
+                                            val updated = buildCurrentSettings().copy(snowbankStyle = style)
+                                            onSettingsChanged(updated)
+                                            onSaveSettings(updated)
                                         }
                                         .padding(vertical = 8.dp),
                                     contentAlignment = Alignment.Center
@@ -373,15 +389,10 @@ fun SnowSettingsMenu(
                             value = snowflakeSize,
                             onValueChange = { newValue ->
                                 snowflakeSize = (newValue * 10).roundToInt() / 10f
-                                onSettingsChanged(
-                                    settings.copy(
-                                        fallSpeed = fallSpeed,
-                                        intensity = intensity,
-                                        accumulationRate = accumulationRate,
-                                        snowbankHeight = snowbankHeight,
-                                        snowflakeSize = snowflakeSize
-                                    )
-                                )
+                                onSettingsChanged(buildCurrentSettings())
+                            },
+                            onValueChangeFinished = {
+                                onSaveSettings(buildCurrentSettings())
                             },
                             valueRange = SnowSettings.MIN_SNOWFLAKE_SIZE..SnowSettings.MAX_SNOWFLAKE_SIZE,
                             colors = SliderDefaults.colors(
@@ -415,15 +426,10 @@ fun SnowSettingsMenu(
                             value = fallSpeed,
                             onValueChange = { newValue ->
                                 fallSpeed = (newValue * 10).roundToInt() / 10f
-                                onSettingsChanged(
-                                    settings.copy(
-                                        fallSpeed = fallSpeed,
-                                        intensity = intensity,
-                                        accumulationRate = accumulationRate,
-                                        snowbankHeight = snowbankHeight,
-                                        snowflakeSize = snowflakeSize
-                                    )
-                                )
+                                onSettingsChanged(buildCurrentSettings())
+                            },
+                            onValueChangeFinished = {
+                                onSaveSettings(buildCurrentSettings())
                             },
                             valueRange = SnowSettings.MIN_FALL_SPEED..SnowSettings.MAX_FALL_SPEED,
                             colors = SliderDefaults.colors(
@@ -457,15 +463,10 @@ fun SnowSettingsMenu(
                             value = intensity.toFloat(),
                             onValueChange = { newValue ->
                                 intensity = newValue.roundToInt()
-                                onSettingsChanged(
-                                    settings.copy(
-                                        fallSpeed = fallSpeed,
-                                        intensity = intensity,
-                                        accumulationRate = accumulationRate,
-                                        snowbankHeight = snowbankHeight,
-                                        snowflakeSize = snowflakeSize
-                                    )
-                                )
+                                onSettingsChanged(buildCurrentSettings())
+                            },
+                            onValueChangeFinished = {
+                                onSaveSettings(buildCurrentSettings())
                             },
                             valueRange = SnowSettings.MIN_INTENSITY.toFloat()..SnowSettings.MAX_INTENSITY.toFloat(),
                             colors = SliderDefaults.colors(
@@ -499,15 +500,10 @@ fun SnowSettingsMenu(
                             value = accumulationRate,
                             onValueChange = { newValue ->
                                 accumulationRate = (newValue * 10).roundToInt() / 10f
-                                onSettingsChanged(
-                                    settings.copy(
-                                        fallSpeed = fallSpeed,
-                                        intensity = intensity,
-                                        accumulationRate = accumulationRate,
-                                        snowbankHeight = snowbankHeight,
-                                        snowflakeSize = snowflakeSize
-                                    )
-                                )
+                                onSettingsChanged(buildCurrentSettings())
+                            },
+                            onValueChangeFinished = {
+                                onSaveSettings(buildCurrentSettings())
                             },
                             valueRange = SnowSettings.MIN_ACCUMULATION_RATE..SnowSettings.MAX_ACCUMULATION_RATE,
                             colors = SliderDefaults.colors(
@@ -541,15 +537,10 @@ fun SnowSettingsMenu(
                             value = snowbankHeight,
                             onValueChange = { newValue ->
                                 snowbankHeight = newValue.roundToInt().toFloat()
-                                onSettingsChanged(
-                                    settings.copy(
-                                        fallSpeed = fallSpeed,
-                                        intensity = intensity,
-                                        accumulationRate = accumulationRate,
-                                        snowbankHeight = snowbankHeight,
-                                        snowflakeSize = snowflakeSize
-                                    )
-                                )
+                                onSettingsChanged(buildCurrentSettings())
+                            },
+                            onValueChangeFinished = {
+                                onSaveSettings(buildCurrentSettings())
                             },
                             valueRange = SnowSettings.MIN_SNOWBANK_HEIGHT..SnowSettings.MAX_SNOWBANK_HEIGHT,
                             colors = SliderDefaults.colors(
@@ -623,7 +614,7 @@ fun SnowSettingsMenu(
 
                     // Кнопка «Закрыть настройки»
                     Button(
-                        onClick = onDismiss,
+                        onClick = handleDismiss,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(46.dp),

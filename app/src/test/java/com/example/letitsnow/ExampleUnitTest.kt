@@ -50,6 +50,7 @@ class ExampleUnitTest {
         val flake = Snowflake()
         flake.reset(1080f, 1920f, 2.5f, isInitial = true)
         assertTrue("Initial snowflake must start above the screen", flake.y <= 0f)
+        assertTrue("Depth speed factor must be initialized", flake.depthSpeedFactor >= 0.65f)
     }
 
     @Test
@@ -61,5 +62,14 @@ class ExampleUnitTest {
         assertEquals("Алый", SnowColorTheme.SCARLET.title)
         assertEquals("Сказочный", SnowflakeStyle.FAIRYTALE.title)
         assertEquals("Хлопья", SnowflakeStyle.FLUFFY.title)
+    }
+
+    @Test
+    fun snowView_fpsConstants_areCorrect() {
+        assertEquals(0, SnowView.FPS_UNLIMITED)
+        assertEquals(60, SnowView.FPS_60)
+        assertEquals(45, SnowView.FPS_45)
+        assertEquals(40, SnowView.FPS_40)
+        assertEquals(60, SnowView.DEFAULT_MAX_FPS)
     }
 }

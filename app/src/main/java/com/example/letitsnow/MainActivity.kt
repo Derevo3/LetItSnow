@@ -274,10 +274,14 @@ class MainActivity : ComponentActivity() {
                 SnowSettingsMenu(
                     isOpen = isSettingsOpen,
                     settings = currentSettings,
-                    onSettingsChanged = { updated ->
-                        // Мгновенное применение к движку без ожидания записи на диск
+                    onSettingsChanged = { liveSettings ->
+                        // Мгновенное применение к графическому движку без блокировок и дискового I/O
+                        snowView.applySettings(liveSettings)
+                    },
+                    onSaveSettings = { updated ->
+                        // Мгновенное применение к движку
                         snowView.applySettings(updated)
-                        // Асинхронное сохранение в DataStore Preferences
+                        // Асинхронное сохранение в DataStore Preferences один раз при завершении изменения
                         coroutineScope.launch {
                             settingsRepository.saveSettings(updated)
                         }

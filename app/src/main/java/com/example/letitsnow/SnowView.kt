@@ -27,6 +27,33 @@ class SnowView @JvmOverloads constructor(
     companion object {
         // Глубокий темно-синий цвет ночного зимнего неба по умолчанию
         private const val DEFAULT_BACKGROUND_COLOR = 0xFF0B132B.toInt()
+
+        const val FPS_UNLIMITED = 0
+        const val FPS_60 = 60
+        const val FPS_45 = 45
+        const val FPS_40 = 40
+        const val DEFAULT_MAX_FPS = 60
+    }
+
+    /**
+     * Ограничение максимальной частоты кадров анимации (FPS_UNLIMITED, FPS_60, FPS_45, FPS_40).
+     * По умолчанию 60 FPS для устранения избыточного расхода батареи на дисплеях с 90 Гц и 120 Гц.
+     */
+    var maxFps: Int = DEFAULT_MAX_FPS
+        set(value) {
+            field = value
+            updateFrameInterval()
+        }
+
+    private var minFrameIntervalNanos: Long = 0L
+
+    private fun updateFrameInterval() {
+        minFrameIntervalNanos = if (maxFps > 0) {
+            // Запас 1.5 мс для компенсации аппаратного джиттера тайминга VSYNC в Choreographer
+            ((1_000_000_000L / maxFps) - 1_500_000L).coerceAtLeast(0L)
+        } else {
+            0L
+        }
     }
 
     /**
@@ -112,7 +139,7 @@ class SnowView @JvmOverloads constructor(
 
     private var isRunning = false
     private var isCallbackScheduled = false
-    private var lastFrameTimeNanos: Long = 0L
+    private var lastRenderedFrameTimeNanos: Long = 0L
 
     private val choreographer: Choreographer by lazy { Choreographer.getInstance() }
 
@@ -121,8 +148,17 @@ class SnowView @JvmOverloads constructor(
             isCallbackScheduled = false
             if (!isRunning) return
 
-            if (lastFrameTimeNanos > 0L) {
-                val dt = ((frameTimeNanos - lastFrameTimeNanos) / 1_000_000_000f).coerceIn(0f, 0.1f)
+            if (lastRenderedFrameTimeNanos > 0L) {
+                val elapsedNanos = frameTimeNanos - lastRenderedFrameTimeNanos
+                if (minFrameIntervalNanos > 0L && elapsedNanos < minFrameIntervalNanos) {
+                    // Пропускаем этот такт VSYNC, удерживая равномерный FPS и снижая нагрузку на CPU/GPU
+                    if (isRunning) {
+                        postNextFrame()
+                    }
+                    return
+                }
+
+                val dt = (elapsedNanos / 1_000_000_000f).coerceIn(0f, 0.1f)
                 val w = width.toFloat()
                 val h = height.toFloat()
 
@@ -160,7 +196,7 @@ class SnowView @JvmOverloads constructor(
                     invalidate()
                 }
             }
-            lastFrameTimeNanos = frameTimeNanos
+            lastRenderedFrameTimeNanos = frameTimeNanos
 
             if (isRunning) {
                 postNextFrame()
@@ -169,6 +205,8 @@ class SnowView @JvmOverloads constructor(
     }
 
     init {
+        updateFrameInterval()
+
         val dm = resources.displayMetrics
         if (dm.widthPixels > 0 && dm.heightPixels > 0) {
             snowMask.setSize(dm.widthPixels.toFloat(), dm.heightPixels.toFloat(), density)
@@ -275,18 +313,17 @@ class SnowView @JvmOverloads constructor(
     fun start() {
         if (!isRunning) {
             isRunning = true
-            lastFrameTimeNanos = 0L
+            lastRenderedFrameTimeNanos = 0L
             postNextFrame()
         }
         invalidate()
     }
 
     fun pause() {
-        if (isRunning) {
-            isRunning = false
-            choreographer.removeFrameCallback(frameCallback)
-            isCallbackScheduled = false
-        }
+        isRunning = false
+        choreographer.removeFrameCallback(frameCallback)
+        isCallbackScheduled = false
+        lastRenderedFrameTimeNanos = 0L
     }
 
     private fun postNextFrame() {
@@ -299,7 +336,9 @@ class SnowView @JvmOverloads constructor(
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         if (isOverlayMode) {
-            start()
+            if (visibility == VISIBLE) {
+                start()
+            }
         } else if (windowVisibility == VISIBLE && isShown) {
             start()
         }
@@ -307,16 +346,16 @@ class SnowView @JvmOverloads constructor(
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
-        if (!isOverlayMode) {
-            pause()
-        }
+        // Гарантированная остановка цикла анимации при откреплении View для исключения утечек памяти
+        pause()
     }
 
     override fun onWindowVisibilityChanged(visibility: Int) {
         super.onWindowVisibilityChanged(visibility)
-        if (isOverlayMode) return
         if (visibility == VISIBLE) {
-            start()
+            if (!isOverlayMode || this.visibility == VISIBLE) {
+                start()
+            }
         } else {
             pause()
         }
@@ -324,9 +363,10 @@ class SnowView @JvmOverloads constructor(
 
     override fun onVisibilityChanged(changedView: View, visibility: Int) {
         super.onVisibilityChanged(changedView, visibility)
-        if (isOverlayMode) return
         if (visibility == VISIBLE && windowVisibility == VISIBLE) {
-            start()
+            if (!isOverlayMode || this.visibility == VISIBLE) {
+                start()
+            }
         } else {
             pause()
         }

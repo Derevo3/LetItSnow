@@ -229,6 +229,10 @@ class SnowOverlayService : Service() {
     private fun observeSettings() {
         serviceScope.launch {
             settingsRepository.settingsFlow.collectLatest { settings ->
+                if (!settings.isOverlayEnabled) {
+                    stopSelf()
+                    return@collectLatest
+                }
                 if (::snowView.isInitialized) {
                     snowView.applySettings(settings)
                 }

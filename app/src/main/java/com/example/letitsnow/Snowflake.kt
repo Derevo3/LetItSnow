@@ -40,7 +40,8 @@ data class Snowflake(
     var landingProgress: Float = 0f,
     var tiltAngle: Float = 0f,
     var tiltSpeed: Float = 0f,
-    var depthZ: Float = 0.5f // 0.0 (глубокий далекий фон) .. 1.0 (ближний план)
+    var depthZ: Float = 0.5f, // 0.0 (глубокий далекий фон) .. 1.0 (ближний план)
+    var depthSpeedFactor: Float = 1.0f // Предрассчитанный множитель скорости на основе depthZ
 ) {
     companion object {
         const val TYPE_MICRO = 0    // 90% — крошечные точки и микроскопические хлопья (1–3 dp)
@@ -72,7 +73,7 @@ data class Snowflake(
             return
         }
 
-        val effSpeedMultiplier = (fallSpeedMultiplier * (0.65f + depthZ * 0.70f)).coerceAtLeast(0.05f)
+        val effSpeedMultiplier = (fallSpeedMultiplier * depthSpeedFactor).coerceAtLeast(0.05f)
         y += speedY * effSpeedMultiplier * dtSec
 
         angle += swaySpeed * dtSec
@@ -101,15 +102,18 @@ data class Snowflake(
             return
         }
 
-        val surfaceY = accumulation.getSurfaceY(x)
-        val contactY = surfaceY - effRadius * 0.4f
+        // Быстрая отсечка: проверяем коллизию с сугробом только когда снежинка достигает гребня сугроба
+        if (y >= accumulation.minSurfaceY - effRadius * 0.4f) {
+            val surfaceY = accumulation.getSurfaceY(x)
+            val contactY = surfaceY - effRadius * 0.4f
 
-        if (y >= contactY) {
-            accumulation.addSnow(x, effRadius, accumulationMultiplier)
-            isLanding = true
-            landingProgress = 0f
-            y = contactY
-            return
+            if (y >= contactY) {
+                accumulation.addSnow(x, effRadius, accumulationMultiplier)
+                isLanding = true
+                landingProgress = 0f
+                y = contactY
+                return
+            }
         }
 
         if (y - effRadius > height) {
@@ -132,6 +136,7 @@ data class Snowflake(
         landingProgress = 0f
 
         depthZ = Random.nextFloat()
+        depthSpeedFactor = 0.65f + depthZ * 0.70f
 
         val typeRoll = Random.nextFloat()
         type = when {
