@@ -43,8 +43,8 @@ import kotlinx.coroutines.launch
 class SnowOverlayService : Service() {
 
     companion object {
-        const val ACTION_START = "com.example.letitsnow.ACTION_START"
-        const val ACTION_STOP = "com.example.letitsnow.ACTION_STOP"
+        const val ACTION_START = "com.letitsnow.myapp.ACTION_START"
+        const val ACTION_STOP = "com.letitsnow.myapp.ACTION_STOP"
 
         private const val NOTIFICATION_CHANNEL_ID = "snow_overlay_channel"
         private const val NOTIFICATION_ID = 1001

@@ -10,7 +10,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.letitsnow"
+        applicationId = "com.letitsnow.myapp"
         minSdk = 24
         targetSdk = 37
         versionCode = 1
