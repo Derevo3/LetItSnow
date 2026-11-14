@@ -190,7 +190,8 @@ class SnowOverlayService : Service() {
         val effectiveSeconds = maxOf(elapsedSeconds, 5f)
         snowView.accumulation.accumulateOfflineSnow(
             elapsedSeconds = effectiveSeconds,
-            rateMultiplier = snowView.accumulationRateMultiplier
+            rateMultiplier = snowView.accumulationRateMultiplier,
+            amountRatio = currentSettings.unlockSnowAmount
         )
         setInteractiveMode(true)
         snowView.invalidate()

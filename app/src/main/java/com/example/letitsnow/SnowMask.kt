@@ -4,8 +4,12 @@ import android.view.MotionEvent
 
 /**
  * Класс, отвечающий за обработку жестов очистки накопившегося снега пальцем.
- * Палец очищает ТОЛЬКО накопившийся снег, вычисляя непрерывные вытянутые сегменты
- * с мягким переходом прозрачности и снежными валиками по бокам.
+ * Поддерживает два режима:
+ * 1. Режим «Снег на горизонтально лежащем телефоне»:
+ *    Очищает снежный покров на всей плоскости экрана с мягкими органическими краями
+ *    и снежными валиками, открывая чистое стекло под пальцем.
+ * 2. Обычный режим:
+ *    Очищает накопившийся сугроб у нижнего края экрана.
  */
 class SnowMask {
 
@@ -33,7 +37,6 @@ class SnowMask {
 
     /**
      * Обработка касаний: непрерывная интерполяция между точками касания.
-     * Очищает снег только там, где он физически присутствует.
      */
     fun onTouchEvent(
         event: MotionEvent,
@@ -44,6 +47,13 @@ class SnowMask {
 
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
+                if (snowAccumulation.isSurfaceCoverActive) {
+                    prevTouchX = x
+                    prevTouchY = y
+                    snowAccumulation.clearAlongSegment(x, y, x, y, wipeRadius)
+                    return true
+                }
+
                 val surfaceY = snowAccumulation.getSurfaceY(x)
                 // Касание активирует очистку только если палец находится в пределах сугроба
                 if (y >= surfaceY - wipeRadius && snowAccumulation.getSnowHeight(x) > 1f) {
@@ -58,12 +68,22 @@ class SnowMask {
             }
 
             MotionEvent.ACTION_MOVE -> {
+                if (snowAccumulation.isSurfaceCoverActive) {
+                    if (prevTouchX >= 0f && prevTouchY >= 0f) {
+                        snowAccumulation.clearAlongSegment(prevTouchX, prevTouchY, x, y, wipeRadius)
+                    } else {
+                        snowAccumulation.clearAlongSegment(x, y, x, y, wipeRadius)
+                    }
+                    prevTouchX = x
+                    prevTouchY = y
+                    return true
+                }
+
                 val surfaceY = snowAccumulation.getSurfaceY(x)
                 val inSnow = (y >= surfaceY - wipeRadius && snowAccumulation.getSnowHeight(x) > 1f)
 
                 if (inSnow) {
                     if (prevTouchX >= 0f && prevTouchY >= 0f) {
-                        // Непрерывная очистка вытянутым сегментом вдоль движения пальца
                         snowAccumulation.clearAlongSegment(prevTouchX, prevTouchY, x, y, wipeRadius)
                     } else {
                         snowAccumulation.clearAlongSegment(x, y, x, y, wipeRadius)

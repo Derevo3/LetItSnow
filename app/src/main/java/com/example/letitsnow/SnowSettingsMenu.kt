@@ -70,6 +70,7 @@ fun SnowSettingsMenu(
     var accumulationRate by remember(settings.accumulationRate) { mutableFloatStateOf(settings.accumulationRate) }
     var snowbankHeight by remember(settings.snowbankHeight) { mutableFloatStateOf(settings.snowbankHeight) }
     var snowflakeSize by remember(settings.snowflakeSize) { mutableFloatStateOf(settings.snowflakeSize) }
+    var unlockSnowAmount by remember(settings.unlockSnowAmount) { mutableFloatStateOf(settings.unlockSnowAmount) }
 
     val isScarlet = settings.colorTheme == SnowColorTheme.SCARLET
     val primaryAccent = if (isScarlet) Color(0xFFF87171) else Color(0xFF93C5FD)
@@ -379,7 +380,8 @@ fun SnowSettingsMenu(
                                         intensity = intensity,
                                         accumulationRate = accumulationRate,
                                         snowbankHeight = snowbankHeight,
-                                        snowflakeSize = snowflakeSize
+                                        snowflakeSize = snowflakeSize,
+                                        unlockSnowAmount = unlockSnowAmount
                                     )
                                 )
                             },
@@ -421,7 +423,8 @@ fun SnowSettingsMenu(
                                         intensity = intensity,
                                         accumulationRate = accumulationRate,
                                         snowbankHeight = snowbankHeight,
-                                        snowflakeSize = snowflakeSize
+                                        snowflakeSize = snowflakeSize,
+                                        unlockSnowAmount = unlockSnowAmount
                                     )
                                 )
                             },
@@ -463,7 +466,8 @@ fun SnowSettingsMenu(
                                         intensity = intensity,
                                         accumulationRate = accumulationRate,
                                         snowbankHeight = snowbankHeight,
-                                        snowflakeSize = snowflakeSize
+                                        snowflakeSize = snowflakeSize,
+                                        unlockSnowAmount = unlockSnowAmount
                                     )
                                 )
                             },
@@ -505,7 +509,8 @@ fun SnowSettingsMenu(
                                         intensity = intensity,
                                         accumulationRate = accumulationRate,
                                         snowbankHeight = snowbankHeight,
-                                        snowflakeSize = snowflakeSize
+                                        snowflakeSize = snowflakeSize,
+                                        unlockSnowAmount = unlockSnowAmount
                                     )
                                 )
                             },
@@ -547,7 +552,8 @@ fun SnowSettingsMenu(
                                         intensity = intensity,
                                         accumulationRate = accumulationRate,
                                         snowbankHeight = snowbankHeight,
-                                        snowflakeSize = snowflakeSize
+                                        snowflakeSize = snowflakeSize,
+                                        unlockSnowAmount = unlockSnowAmount
                                     )
                                 )
                             },
@@ -632,6 +638,60 @@ fun SnowSettingsMenu(
                                 uncheckedTrackColor = Color(0xFF334155)
                             )
                         )
+                    }
+
+                    // 10. Ползунок количества снега для разблокировки экрана
+                    if (settings.isUnlockAccumulationEnabled) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color(0x331E293B), RoundedCornerShape(12.dp))
+                                .padding(horizontal = 14.dp, vertical = 10.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "Количество снега при разблокировке",
+                                    color = Color(0xFFE2E8F0),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = "${(unlockSnowAmount * 100).roundToInt()}%",
+                                    color = primaryAccent,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Slider(
+                                value = unlockSnowAmount,
+                                onValueChange = { newValue ->
+                                    val rounded = (newValue * 20).roundToInt() / 20f
+                                    unlockSnowAmount = rounded.coerceIn(
+                                        SnowSettings.MIN_UNLOCK_SNOW_AMOUNT,
+                                        SnowSettings.MAX_UNLOCK_SNOW_AMOUNT
+                                    )
+                                    onSettingsChanged(
+                                        settings.copy(
+                                            fallSpeed = fallSpeed,
+                                            intensity = intensity,
+                                            accumulationRate = accumulationRate,
+                                            snowbankHeight = snowbankHeight,
+                                            snowflakeSize = snowflakeSize,
+                                            unlockSnowAmount = unlockSnowAmount
+                                        )
+                                    )
+                                },
+                                valueRange = SnowSettings.MIN_UNLOCK_SNOW_AMOUNT..SnowSettings.MAX_UNLOCK_SNOW_AMOUNT,
+                                colors = SliderDefaults.colors(
+                                    thumbColor = primaryAccent,
+                                    activeTrackColor = activeTrackColor,
+                                    inactiveTrackColor = activeTrackColor.copy(alpha = 0.2f)
+                                )
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(4.dp))

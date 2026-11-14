@@ -13,12 +13,16 @@ import kotlin.math.sin
 
 /**
  * Двумерная физическая модель накопления снега (2D Snow Density Grid)
- * с поддержкой 4 различных визуальных стилей сугроба:
- * - [SnowbankStyle.SMOOTH_HILLS]: Шелковистые широкие природные холмы с мягкими тенями.
- * - [SnowbankStyle.PUFFY_CLOUDS]: Пышные округлые облачные шапки свежего снега.
- * - [SnowbankStyle.ICY_SHELF]: Кристальная светящаяся ледяная полка со слоистой каймой.
- * - [SnowbankStyle.CLASSIC]: Детализированный сглаженный сугроб с мягким зимним градиентом.
- * При выборе темы «Алый» сугробы автоматически окрашиваются в кроваво-красные тона.
+ * с поддержкой двух режимов:
+ * 1. Режим «Снег на горизонтально лежащем телефоне» (активируется после разблокировки экрана):
+ *    Равномерный естественный снежный покров по всей плоскости стекла с чистым следом от пальца,
+ *    мягкими кромками, снежными валиками и микрокристаллической структурой.
+ * 2. Обычный фоновый режим сугроба у нижнего края экрана с поддержкой 4 стилей:
+ *    - [SnowbankStyle.SMOOTH_HILLS]: Шелковистые широкие природные холмы с мягкими тенями.
+ *    - [SnowbankStyle.PUFFY_CLOUDS]: Пышные округлые облачные шапки свежего снега.
+ *    - [SnowbankStyle.ICY_SHELF]: Кристальная светящаяся ледяная полка со слоистой каймой.
+ *    - [SnowbankStyle.CLASSIC]: Детализированный сглаженный сугроб с мягким зимним градиентом.
+ * При выборе темы «Алый» снег и сугробы автоматически окрашиваются в кроваво-красные тона.
  */
 class SnowAccumulation {
 
@@ -37,6 +41,13 @@ class SnowAccumulation {
         private set
 
     /**
+     * Активен ли режим снежного покрова на горизонтально лежащем экране
+     * (активируется после разблокировки устройства).
+     */
+    var isSurfaceCoverActive: Boolean = false
+        private set
+
+    /**
      * Базовая высота постоянного сугроба у нижнего края экрана (в dp).
      */
     var baseSnowbankHeightDp: Float = SnowSettings.DEFAULT_SNOWBANK_HEIGHT
@@ -47,10 +58,19 @@ class SnowAccumulation {
      */
     var allowGrowthAboveBase: Boolean = true
 
-    // Физическая сетка плотности снега (0.0f - чисто, 1.0f - плотный снег)
+    // Физическая сетка плотности сугроба внизу экрана (0.0f - чисто, 1.0f - плотный снег)
     private var densities = FloatArray(0)
 
-    // Буферы для классического растрового режима
+    // Сетка плотности снега на стекле горизонтального телефона
+    private var surfaceDensities = FloatArray(0)
+
+    // Маска очищенных пальцем участков (true = очищено, снег не восстанавливается)
+    private var surfaceClearedMask = BooleanArray(0)
+
+    private var initialSurfaceSnowAmount: Float = 0f
+    private var initialOfflineSnowAmount: Float = 0f
+
+    // Буферы для растровой отрисовки
     private var tempBlur = FloatArray(0)
     private var visualDensities = FloatArray(0)
     private var pixels = IntArray(0)
@@ -62,12 +82,12 @@ class SnowAccumulation {
         isDither = true
     }
 
-    // Буферы высот для гладких векторных режимов
+    // Буферы высот для векторных режимов сугроба
     private var rawSurfaceY = FloatArray(0)
     private var smoothSurfaceY = FloatArray(0)
     private var tempSurfaceY = FloatArray(0)
 
-    // Преаллоцированные векторные пути (0 аллокаций во время отрисовки кадров)
+    // Преаллоцированные векторные пути
     private val mainPath = Path()
     private val backPath = Path()
     private val crestPath = Path()
@@ -153,6 +173,8 @@ class SnowAccumulation {
         val total = cols * rows
 
         densities = FloatArray(total)
+        surfaceDensities = FloatArray(total)
+        surfaceClearedMask = BooleanArray(total)
         tempBlur = FloatArray(total)
         visualDensities = FloatArray(total)
         pixels = IntArray(total)
@@ -165,7 +187,6 @@ class SnowAccumulation {
         puffyRimPaint.strokeWidth = 2.4f * densityScale
         iceCrestPaint.strokeWidth = 3.0f * densityScale
 
-        // Градиенты покрывают всю возможную высоту экрана, включая засыпание при разблокировке
         smoothMainShaderNormal = LinearGradient(
             0f, 0f,
             0f, h,
@@ -272,7 +293,7 @@ class SnowAccumulation {
         )
         if (baseSnowbankHeightDp != clamped) {
             baseSnowbankHeightDp = clamped
-            if (initialOfflineSnowAmount <= 0.001f) {
+            if (initialOfflineSnowAmount <= 0.001f && !isSurfaceCoverActive) {
                 populateBaseSnowbank()
             } else {
                 ensureBaseSnowbank()
@@ -320,6 +341,7 @@ class SnowAccumulation {
     }
 
     fun getSurfaceY(x: Float): Float {
+        if (isSurfaceCoverActive) return 0f
         if (cols == 0 || rows == 0) return height
         val c = (x / cellW).toInt().coerceIn(0, cols - 1)
 
@@ -333,10 +355,12 @@ class SnowAccumulation {
     }
 
     fun getSnowHeight(x: Float): Float {
+        if (isSurfaceCoverActive) return height
         return (height - getSurfaceY(x)).coerceAtLeast(0f)
     }
 
     fun addSnow(x: Float, flakeRadius: Float, accumulationMultiplier: Float = 1f) {
+        if (isSurfaceCoverActive) return
         if (cols == 0 || rows == 0) return
         val c = (x / cellW).toInt().coerceIn(0, cols - 1)
 
@@ -375,6 +399,11 @@ class SnowAccumulation {
         }
     }
 
+    /**
+     * Очистка снега вдоль отрезка движения пальца.
+     * В режиме «Снег на горизонтально лежащем телефоне» очищает покров на стекле,
+     * а в обычном режиме — насыпь сугроба внизу экрана.
+     */
     fun clearAlongSegment(
         x0: Float,
         y0: Float,
@@ -384,6 +413,67 @@ class SnowAccumulation {
     ) {
         if (cols == 0 || rows == 0) return
 
+        if (isSurfaceCoverActive) {
+            clearSurfaceAlongSegment(x0, y0, x1, y1, radius)
+        } else {
+            clearBankAlongSegment(x0, y0, x1, y1, radius)
+        }
+    }
+
+    private fun clearSurfaceAlongSegment(
+        x0: Float,
+        y0: Float,
+        x1: Float,
+        y1: Float,
+        radius: Float
+    ) {
+        val minX = minOf(x0, x1) - radius * 1.35f
+        val maxX = maxOf(x0, x1) + radius * 1.35f
+        val minY = minOf(y0, y1) - radius * 1.35f
+        val maxY = maxOf(y0, y1) + radius * 1.35f
+
+        val startCol = (minX / cellW).toInt().coerceIn(0, cols - 1)
+        val endCol = (maxX / cellW).toInt().coerceIn(0, cols - 1)
+        val startRow = (minY / cellH).toInt().coerceIn(0, rows - 1)
+        val endRow = (maxY / cellH).toInt().coerceIn(0, rows - 1)
+
+        for (c in startCol..endCol) {
+            val cx = (c + 0.5f) * cellW
+            for (r in startRow..endRow) {
+                val cy = (r + 0.5f) * cellH
+
+                val dist = distToSegment(cx, cy, x0, y0, x1, y1)
+                // Органический шум кромки следа пальца (неровность снежных зерен)
+                val noise = (sin(cx * 0.14f + cy * 0.10f) * cos(cx * 0.08f - cy * 0.12f)) * 0.14f * radius
+                val effectiveR = radius + noise
+                val idx = r * cols + c
+
+                if (dist < effectiveR * 0.65f) {
+                    // Центральная часть следа пальца: 100% чистое стекло
+                    surfaceDensities[idx] = 0f
+                    surfaceClearedMask[idx] = true
+                } else if (dist < effectiveR) {
+                    // Мягкая растушевка кромки (сглаживание Эрмита)
+                    surfaceClearedMask[idx] = true
+                    val factor = ((dist - effectiveR * 0.65f) / (effectiveR * 0.35f)).coerceIn(0f, 1f)
+                    val smoothFactor = factor * factor * (3f - 2f * factor)
+                    surfaceDensities[idx] = minOf(surfaceDensities[idx], smoothFactor)
+                } else if (dist < effectiveR * 1.25f && !surfaceClearedMask[idx] && surfaceDensities[idx] > 0.05f) {
+                    // Снежный валик по бокам от движения пальца
+                    val ridgeFactor = (1.0f - (dist - effectiveR) / (effectiveR * 0.25f)).coerceIn(0f, 1f)
+                    surfaceDensities[idx] = (surfaceDensities[idx] + 0.22f * ridgeFactor * ridgeFactor).coerceAtMost(1.0f)
+                }
+            }
+        }
+    }
+
+    private fun clearBankAlongSegment(
+        x0: Float,
+        y0: Float,
+        x1: Float,
+        y1: Float,
+        radius: Float
+    ) {
         val minX = minOf(x0, x1) - radius * 1.35f
         val maxX = maxOf(x0, x1) + radius * 1.35f
         val minY = minOf(y0, y1) - radius * 1.35f
@@ -437,9 +527,25 @@ class SnowAccumulation {
         return hypot(px - projX, py - projY)
     }
 
-    fun update(dtSec: Float) {
+    fun update(dtSec: Float, rateMultiplier: Float = 1.0f) {
         if (cols == 0 || rows == 0) return
 
+        if (isSurfaceCoverActive) {
+            // В режиме «Снег на горизонтально лежащем телефоне»:
+            // Снежный покров плавно и естественно уплотняется на нетронутых участках,
+            // но очищенные пальцем следы сохраняются навсегда и не восстанавливаются.
+            val growth = 0.025f * dtSec * rateMultiplier
+            for (i in surfaceDensities.indices) {
+                if (!surfaceClearedMask[i] && surfaceDensities[i] < 1.0f) {
+                    surfaceDensities[i] = minOf(1.0f, surfaceDensities[i] + growth)
+                } else if (surfaceClearedMask[i]) {
+                    surfaceDensities[i] = 0f
+                }
+            }
+            return
+        }
+
+        // В обычном режиме: физика гравитации и осыпания сугроба у нижнего края
         for (c in 0 until cols) {
             for (r in rows - 1 downTo 1) {
                 val currIdx = r * cols + c
@@ -476,16 +582,109 @@ class SnowAccumulation {
     }
 
     /**
-     * Отрисовывает сугроб в соответствии с выбранным стилем [style]
-     * с поддержкой кроваво-красного окраса при [isBloody] = true.
+     * Отрисовывает накопившийся снег:
+     * - При активном [isSurfaceCoverActive]: снежный покров на горизонтально лежащем стекле.
+     * - Иначе: сугроб у нижнего края в соответствии со стилем [style] и цветом [isBloody].
      */
     fun draw(canvas: Canvas, style: SnowbankStyle = SnowbankStyle.SMOOTH_HILLS, isBloody: Boolean = false) {
+        if (isSurfaceCoverActive) {
+            drawSurfaceSnowCover(canvas, isBloody)
+            return
+        }
+
         when (style) {
             SnowbankStyle.CLASSIC -> drawClassic(canvas, isBloody)
             SnowbankStyle.SMOOTH_HILLS -> drawSmoothHills(canvas, isBloody)
             SnowbankStyle.PUFFY_CLOUDS -> drawPuffyClouds(canvas, isBloody)
             SnowbankStyle.ICY_SHELF -> drawIcyShelf(canvas, isBloody)
         }
+    }
+
+    /**
+     * Отрисовка снежного покрова на горизонтально лежащем стекле телефона.
+     * Реализует мягкие края следов, легкую кристаллическую неоднородность,
+     * градиент глубины снега и снежные валики по бокам.
+     */
+    private fun drawSurfaceSnowCover(canvas: Canvas, isBloody: Boolean) {
+        val bmp = gridBitmap ?: return
+        if (bmp.isRecycled || cols == 0 || rows == 0) return
+
+        // 1. Быстрое 3-точечное сглаживание по горизонтали
+        for (r in 0 until rows) {
+            val rOffset = r * cols
+            for (c in 0 until cols) {
+                val cM1 = if (c >= 1) c - 1 else 0
+                val cP1 = if (c < cols - 1) c + 1 else cols - 1
+                tempBlur[rOffset + c] =
+                    surfaceDensities[rOffset + cM1] * 0.25f +
+                    surfaceDensities[rOffset + c]   * 0.50f +
+                    surfaceDensities[rOffset + cP1] * 0.25f
+            }
+        }
+
+        // 2. Быстрое 3-точечное сглаживание по вертикали
+        for (c in 0 until cols) {
+            for (r in 0 until rows) {
+                val rM1 = if (r >= 1) r - 1 else 0
+                val rP1 = if (r < rows - 1) r + 1 else rows - 1
+                val idx = r * cols + c
+                val blurred =
+                    tempBlur[rM1 * cols + c] * 0.25f +
+                    tempBlur[idx]            * 0.50f +
+                    tempBlur[rP1 * cols + c] * 0.25f
+
+                // Гарантируем абсолютную чистоту внутри очищенного следа
+                visualDensities[idx] = if (surfaceClearedMask[idx]) {
+                    minOf(blurred, surfaceDensities[idx])
+                } else {
+                    blurred
+                }
+            }
+        }
+
+        // 3. Формирование пикселей снежного покрова с микротекстурой кристаллов и глубиной
+        for (r in 0 until rows) {
+            val rOffset = r * cols
+            for (c in 0 until cols) {
+                val idx = rOffset + c
+                val vd = visualDensities[idx]
+
+                if (vd <= 0.012f) {
+                    pixels[idx] = 0 // Полная прозрачность (открытый экран под стеклом)
+                } else {
+                    val normD = ((vd - 0.012f) / 0.40f).coerceIn(0f, 1f)
+                    val smoothAlpha = normD * normD * (3f - 2f * normD)
+                    val alpha = (smoothAlpha * 248f).toInt().coerceIn(0, 255)
+
+                    // Микротекстура и искры снежных кристаллов
+                    val cx = c.toFloat()
+                    val cy = r.toFloat()
+                    val micro1 = sin(cx * 0.38f + cy * 0.26f) * cos(cx * 0.18f - cy * 0.32f)
+                    val micro2 = sin(cx * 0.82f - cy * 0.62f) * 0.45f
+                    val sparkle = (micro1 + micro2) * 5.0f
+                    val depth = (vd * 16f).coerceIn(0f, 16f)
+
+                    val red: Int
+                    val green: Int
+                    val blue: Int
+
+                    if (isBloody) {
+                        red = (248 - depth * 1.8f + sparkle).toInt().coerceIn(160, 255)
+                        green = (38 - depth * 0.8f + sparkle * 0.3f).toInt().coerceIn(12, 65)
+                        blue = (50 - depth * 0.8f + sparkle * 0.3f).toInt().coerceIn(16, 85)
+                    } else {
+                        red = (255 - depth * 1.5f + sparkle).toInt().coerceIn(215, 255)
+                        green = (255 - depth * 0.8f + sparkle).toInt().coerceIn(230, 255)
+                        blue = 255
+                    }
+
+                    pixels[idx] = (alpha shl 24) or (red shl 16) or (green shl 8) or blue
+                }
+            }
+        }
+
+        bmp.setPixels(pixels, 0, cols, 0, 0, cols, rows)
+        canvas.drawBitmap(bmp, srcRect, dstRect, bitmapPaint)
     }
 
     private fun computeSmoothProfile(blurRadius: Int = 5) {
@@ -609,7 +808,6 @@ class SnowAccumulation {
             puffyRimPaint.color = 0xEEFFFFFF.toInt()
         }
 
-        // 1. Задний фоновый слой пышных снежных шапок (смещенный по фазе для объемного эффекта сугроба)
         backPath.reset()
         backPath.moveTo(0f, height)
         val backStartY = (smoothSurfaceY[0] - 4f * densityScale).coerceAtMost(height)
@@ -619,7 +817,6 @@ class SnowAccumulation {
         var prevX = 0f
         var prevY = backStartY
 
-        // Смещение фазы на половину шага для фоновых шапок
         var c = stepCols / 2
         while (c < cols) {
             val targetX = (c + 0.5f) * cellW
@@ -639,7 +836,6 @@ class SnowAccumulation {
 
         canvas.drawPath(backPath, puffyBackPaint)
 
-        // 2. Передний основной слой пушистых округлых подушек
         mainPath.reset()
         crestPath.reset()
 
@@ -744,9 +940,7 @@ class SnowAccumulation {
     }
 
     /**
-     * СТИЛЬ «КЛАССИКА»: Детализированный сглаженный сугроб.
-     * Использует непрерывную интерполяцию высоты снега, 7-точечный Гауссов фильтр,
-     * искрящуюся морозную текстуру и мягкий зимний/кровавый градиент.
+     * СТИЛЬ «КЛАССИКА»: Детализированный сглаженный сугроб у нижнего края экрана.
      */
     fun drawClassic(canvas: Canvas, isBloody: Boolean = false) {
         val bmp = gridBitmap ?: return
@@ -795,7 +989,7 @@ class SnowAccumulation {
             }
         }
 
-        // 3. Вычисление непрерывного (дробного) уровня поверхности для каждого столбца
+        // 3. Вычисление непрерывного уровня поверхности для каждого столбца
         for (c in 0 until cols) {
             var surfaceRowF = rows.toFloat()
             for (r in 0 until rows) {
@@ -811,14 +1005,13 @@ class SnowAccumulation {
             rawSurfaceY[c] = surfaceRowF
         }
 
-        // Сглаживание высоты гребня между соседними столбцами
         for (c in 0 until cols) {
             val cLeft = (c - 1).coerceAtLeast(0)
             val cRight = (c + 1).coerceAtMost(cols - 1)
             smoothSurfaceY[c] = rawSurfaceY[cLeft] * 0.25f + rawSurfaceY[c] * 0.50f + rawSurfaceY[cRight] * 0.25f
         }
 
-        // 4. Отрисовка детализированной текстуры с мягкими градиентами и микроструктурой
+        // 4. Отрисовка детализированной текстуры
         for (c in 0 until cols) {
             val surfF = smoothSurfaceY[c]
             for (r in 0 until rows) {
@@ -828,16 +1021,13 @@ class SnowAccumulation {
                 if (vd <= 0.012f) {
                     pixels[idx] = 0
                 } else {
-                    // Гладкая интерполяция альфы на кромке (S-образная кривая Эрмита)
                     val normD = ((vd - 0.012f) / 0.42f).coerceIn(0f, 1f)
                     val smoothAlpha = normD * normD * (3f - 2f * normD)
                     val alpha = (smoothAlpha * 255f).toInt().coerceIn(0, 255)
 
-                    // Непрерывная глубина снежного слоя
                     val depth = (r - surfF).coerceAtLeast(0f)
                     val shadowRatio = (depth / 16f).coerceIn(0f, 1f)
 
-                    // Детализированная текстура: искрящаяся морозная микроструктура и мягкий градиент
                     val crestHighlight = if (depth < 2.2f) (1.0f - depth / 2.2f) * 16f else 0f
                     val microDetail = sin(c * 0.35f + r * 0.22f) * cos(c * 0.18f - r * 0.28f) * 3.5f
 
@@ -846,12 +1036,10 @@ class SnowAccumulation {
                     val blue: Int
 
                     if (isBloody) {
-                        // Кроваво-красный сугроб: от ярко-алого гребня с рубиновым отблеском к глубокому тёмно-красному в толще
                         red = (245 - (80 * shadowRatio) + microDetail + crestHighlight).toInt().coerceIn(120, 255)
                         green = (45 - (30 * shadowRatio) + microDetail * 0.5f).toInt().coerceIn(10, 80)
                         blue = (55 - (35 * shadowRatio) + microDetail * 0.5f).toInt().coerceIn(15, 95)
                     } else {
-                        // Переход от чистого искрящегося белого на гребне к благородному снежно-голубому в глубине
                         red = (255 - (36 * shadowRatio) + microDetail + crestHighlight).toInt().coerceIn(195, 255)
                         green = (255 - (20 * shadowRatio) + microDetail + crestHighlight).toInt().coerceIn(215, 255)
                         blue = 255
@@ -866,40 +1054,49 @@ class SnowAccumulation {
         canvas.drawBitmap(bmp, srcRect, dstRect, bitmapPaint)
     }
 
-    private var initialOfflineSnowAmount: Float = 0f
-
     /**
      * Заполнение экрана снегом после разблокировки экрана:
-     * Формирует глубокий холмистый покров (от 45% до 82% высоты экрана),
-     * который переводит оверлей в интерактивный режим для очистки пальцем.
+     * Концепция «Снег на горизонтально лежащем телефоне».
+     * Равномерно и естественно покрывает всю площадь экрана слоем снега
+     * с микрорельефом, естественной текстурой и кристаллическими вариациями.
+     * Параметр [amountRatio] задает плотность/толщину слоя (стандарт 15% / 0.15f).
      */
-    fun accumulateOfflineSnow(elapsedSeconds: Float, rateMultiplier: Float = 1f) {
+    fun accumulateOfflineSnow(
+        elapsedSeconds: Float = 0f,
+        rateMultiplier: Float = 1f,
+        amountRatio: Float = SnowSettings.DEFAULT_UNLOCK_SNOW_AMOUNT
+    ) {
         if (cols <= 0 || rows <= 0) return
 
-        // Базовый уровень засыпки: минимум 45% экрана, плавно растет пропорционально времени сна
-        val minFraction = 0.45f
-        val baseMinRows = rows * minFraction
-        val growth = elapsedSeconds * 0.8f * rateMultiplier
-        val totalBaseRows = (baseMinRows + growth).coerceIn(baseMinRows, rows.toFloat() * 0.82f)
+        isSurfaceCoverActive = true
+        surfaceClearedMask.fill(false)
 
-        for (c in 0 until cols) {
-            val wave = sin(c * 0.12f) * 6f + cos(c * 0.07f) * 4.5f + sin(c * 0.25f) * 3f
-            val colHeight = (totalBaseRows + wave).coerceIn(4f, (rows - 2).toFloat()).toInt()
+        val targetRatio = amountRatio.coerceIn(
+            SnowSettings.MIN_UNLOCK_SNOW_AMOUNT,
+            SnowSettings.MAX_UNLOCK_SNOW_AMOUNT
+        )
+        val baseDensity = (targetRatio * (1.0f + (elapsedSeconds * 0.005f * rateMultiplier))).coerceIn(targetRatio * 0.85f, 1.0f)
 
-            for (h in 0 until colHeight) {
-                val r = rows - 1 - h
-                if (r >= 0) {
-                    val idx = r * cols + c
-                    if (h == colHeight - 1) {
-                        densities[idx] = (densities[idx] + 0.75f).coerceIn(0f, 1f)
-                    } else {
-                        densities[idx] = 1.0f
-                    }
-                }
+        for (r in 0 until rows) {
+            val rOffset = r * cols
+            for (c in 0 until cols) {
+                val idx = rOffset + c
+                val wave = (sin(c * 0.14f + r * 0.08f) * 0.05f +
+                           cos(c * 0.07f - r * 0.12f) * 0.04f +
+                           sin(c * 0.28f) * cos(r * 0.20f) * 0.02f) * (targetRatio.coerceAtMost(0.5f) / 0.5f)
+                surfaceDensities[idx] = (baseDensity + wave).coerceIn(0.02f, 1.0f)
             }
         }
 
-        initialOfflineSnowAmount = (getTotalSnow() - getBaseSnowAmount()).coerceAtLeast(1f)
+        initialSurfaceSnowAmount = getSurfaceSnowTotal().coerceAtLeast(1f)
+    }
+
+    private fun getSurfaceSnowTotal(): Float {
+        var sum = 0f
+        for (i in surfaceDensities.indices) {
+            sum += surfaceDensities[i]
+        }
+        return sum
     }
 
     fun getBaseSnowAmount(): Float {
@@ -921,6 +1118,12 @@ class SnowAccumulation {
     }
 
     fun getClearedRatio(): Float {
+        if (isSurfaceCoverActive) {
+            if (initialSurfaceSnowAmount <= 0.001f) return 1.0f
+            val current = getSurfaceSnowTotal()
+            return ((initialSurfaceSnowAmount - current) / initialSurfaceSnowAmount).coerceIn(0f, 1f)
+        }
+
         if (initialOfflineSnowAmount <= 0.001f) {
             return 1.0f
         }
@@ -929,8 +1132,12 @@ class SnowAccumulation {
     }
 
     fun clearAllSnow() {
+        isSurfaceCoverActive = false
+        surfaceClearedMask.fill(false)
+        surfaceDensities.fill(0f)
         populateBaseSnowbank()
         pixels.fill(0)
         initialOfflineSnowAmount = 0f
+        initialSurfaceSnowAmount = 0f
     }
 }

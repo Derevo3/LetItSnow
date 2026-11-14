@@ -86,6 +86,23 @@ data class Snowflake(
         rotation += rotationSpeed * dtSec
 
         val effRadius = radius * sizeMultiplier
+
+        // В режиме «Снег на горизонтально лежащем телефоне»:
+        // Снежинки непрерывно падают через весь экран поверх лежащего снега,
+        // не останавливаясь и не восстанавливая очищенные пальцем участки
+        if (accumulation.isSurfaceCoverActive) {
+            if (y - effRadius > height) {
+                reset(width, height, density, isInitial = false)
+                return
+            }
+            if (x + effRadius < -30f * density) {
+                baseX += width + 60f * density
+            } else if (x - effRadius > width + 30f * density) {
+                baseX -= width + 60f * density
+            }
+            return
+        }
+
         val surfaceY = accumulation.getSurfaceY(x)
         val contactY = surfaceY - effRadius * 0.4f
 

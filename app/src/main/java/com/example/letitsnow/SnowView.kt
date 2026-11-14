@@ -14,11 +14,11 @@ import android.view.View
 /**
  * Кастомный View с четким разделением двух слоев:
  * Слой 1 — плавно падающие снежинки (не зависят от касаний, не застывают в воздухе).
- * Слой 2 — физически накопившийся снег (двумерная сетка плотности), постепенно заполняющий
- * пространство снизу вверх и очищаемый пальцем с мягкими краями и валиками.
- *
- * Поддерживает множественные стили снежинок и стили сугроба, цветовую тему («Белый» / «Алый»),
- * волшебное сияние, а также плавное регулирование размера.
+ * Слой 2 — физически накопившийся снег:
+ *   - В режиме «Снег на горизонтально лежащем телефоне» (после разблокировки):
+ *     снежный покров на всей плоскости стекла экрана с чистым следом от пальца.
+ *   - В обычном режиме:
+ *     сугроб у нижнего края экрана с выбранным стилем.
  */
 class SnowView @JvmOverloads constructor(
     context: Context,
@@ -72,6 +72,11 @@ class SnowView @JvmOverloads constructor(
     var useDetailedGraphics: Boolean = true
 
     /**
+     * Количество снега при разблокировке (0.05 .. 1.0, по умолчанию 15% = 0.15).
+     */
+    var unlockSnowAmount: Float = SnowSettings.DEFAULT_UNLOCK_SNOW_AMOUNT
+
+    /**
      * Целевое количество одновременно отображаемых снежинок (10 .. 300).
      */
     var targetSnowflakeCount: Int = SnowSettings.DEFAULT_INTENSITY
@@ -100,12 +105,12 @@ class SnowView @JvmOverloads constructor(
         }
 
     /**
-     * Интерактивный режим (активируется при разблокировке для очистки сугроба пальцем).
+     * Интерактивный режим (активируется при разблокировке для очистки снега пальцем).
      */
     var isInteractive: Boolean = false
 
     /**
-     * Обратный вызов при очистке сугроба (для возврата в сквозной режим FLAG_NOT_TOUCHABLE).
+     * Обратный вызов при очистке снега (для возврата в сквозной режим FLAG_NOT_TOUCHABLE).
      */
     var onSnowClearedListener: (() -> Unit)? = null
 
@@ -190,7 +195,7 @@ class SnowView @JvmOverloads constructor(
                         )
                     }
 
-                    snowAccumulation.update(dt)
+                    snowAccumulation.update(dt, accumulationRateMultiplier)
 
                     invalidate()
                 }
@@ -238,6 +243,7 @@ class SnowView @JvmOverloads constructor(
         isGlowEnabled = settings.isGlowEnabled
         snowbankStyle = settings.snowbankStyle
         useDetailedGraphics = settings.useDetailedGraphics
+        unlockSnowAmount = settings.unlockSnowAmount
         invalidate()
     }
 
@@ -276,27 +282,44 @@ class SnowView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        // Слой 1: Падающие снежинки с выбранным стилем, цветовой темой и сиянием
         val activeFlakeStyle = snowflakeStyle
         val activeColorTheme = colorTheme
         val activeGlow = isGlowEnabled
-
-        for (i in 0 until snowflakes.size) {
-            snowflakes[i].draw(
-                canvas = canvas,
-                paint = flakePaint,
-                density = density,
-                style = activeFlakeStyle,
-                colorTheme = activeColorTheme,
-                isGlowEnabled = activeGlow,
-                sizeMultiplier = snowflakeSizeMultiplier
-            )
-        }
-
-        // Слой 2: Накопившийся снег (сугроб) с выбранным стилем и цветом
         val activeBankStyle = snowbankStyle
         val isBloody = activeColorTheme == SnowColorTheme.SCARLET
-        snowAccumulation.draw(canvas, activeBankStyle, isBloody)
+
+        if (snowAccumulation.isSurfaceCoverActive) {
+            // В режиме «Снег на горизонтально лежащем телефоне»:
+            // Слой 1: Снежный покров на плоскости стекла
+            snowAccumulation.draw(canvas, activeBankStyle, isBloody)
+
+            // Слой 2: Падающие снежинки поверх снежного покрова
+            for (i in 0 until snowflakes.size) {
+                snowflakes[i].draw(
+                    canvas = canvas,
+                    paint = flakePaint,
+                    density = density,
+                    style = activeFlakeStyle,
+                    colorTheme = activeColorTheme,
+                    isGlowEnabled = activeGlow,
+                    sizeMultiplier = snowflakeSizeMultiplier
+                )
+            }
+        } else {
+            // В обычном режиме: снежинки падают в сугроб у нижнего края экрана
+            for (i in 0 until snowflakes.size) {
+                snowflakes[i].draw(
+                    canvas = canvas,
+                    paint = flakePaint,
+                    density = density,
+                    style = activeFlakeStyle,
+                    colorTheme = activeColorTheme,
+                    isGlowEnabled = activeGlow,
+                    sizeMultiplier = snowflakeSizeMultiplier
+                )
+            }
+            snowAccumulation.draw(canvas, activeBankStyle, isBloody)
+        }
 
         // Кнопка быстрого смахивания в интерактивном режиме оверлея
         if (isInteractive && isOverlayMode) {
