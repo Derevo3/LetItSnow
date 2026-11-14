@@ -146,7 +146,7 @@ class SnowSettingsRepository(private val context: Context) {
         }
 
     /**
-     * Сохранение всех настроек целиком.
+     * Сохранение всех настроек целиком в рамках одной транзакции DataStore.
      */
     suspend fun saveSettings(settings: SnowSettings) {
         context.snowDataStore.edit { preferences ->
@@ -164,69 +164,12 @@ class SnowSettingsRepository(private val context: Context) {
         }
     }
 
-    suspend fun saveFallSpeed(fallSpeed: Float) {
-        context.snowDataStore.edit { preferences ->
-            preferences[PreferencesKeys.KEY_FALL_SPEED] = fallSpeed
-        }
-    }
-
-    suspend fun saveIntensity(intensity: Int) {
-        context.snowDataStore.edit { preferences ->
-            preferences[PreferencesKeys.KEY_INTENSITY] = intensity
-        }
-    }
-
-    suspend fun saveAccumulationRate(accumulationRate: Float) {
-        context.snowDataStore.edit { preferences ->
-            preferences[PreferencesKeys.KEY_ACCUMULATION_RATE] = accumulationRate
-        }
-    }
-
+    /**
+     * Быстрое переключение активности системного оверлея.
+     */
     suspend fun saveOverlayEnabled(enabled: Boolean) {
         context.snowDataStore.edit { preferences ->
             preferences[PreferencesKeys.KEY_OVERLAY_ENABLED] = enabled
-        }
-    }
-
-    suspend fun saveSnowbankHeight(snowbankHeight: Float) {
-        context.snowDataStore.edit { preferences ->
-            preferences[PreferencesKeys.KEY_SNOWBANK_HEIGHT] = snowbankHeight
-        }
-    }
-
-    suspend fun saveSnowflakeSize(size: Float) {
-        context.snowDataStore.edit { preferences ->
-            preferences[PreferencesKeys.KEY_SNOWFLAKE_SIZE] = size
-        }
-    }
-
-    suspend fun saveSnowflakeStyle(style: SnowflakeStyle) {
-        context.snowDataStore.edit { preferences ->
-            preferences[PreferencesKeys.KEY_SNOWFLAKE_STYLE] = style.name
-        }
-    }
-
-    suspend fun saveColorTheme(theme: SnowColorTheme) {
-        context.snowDataStore.edit { preferences ->
-            preferences[PreferencesKeys.KEY_COLOR_THEME] = theme.name
-        }
-    }
-
-    suspend fun saveGlowEnabled(enabled: Boolean) {
-        context.snowDataStore.edit { preferences ->
-            preferences[PreferencesKeys.KEY_GLOW_ENABLED] = enabled
-        }
-    }
-
-    suspend fun saveSnowbankStyle(style: SnowbankStyle) {
-        context.snowDataStore.edit { preferences ->
-            preferences[PreferencesKeys.KEY_SNOWBANK_STYLE] = style.name
-        }
-    }
-
-    suspend fun saveUseDetailedGraphics(enabled: Boolean) {
-        context.snowDataStore.edit { preferences ->
-            preferences[PreferencesKeys.KEY_USE_DETAILED_GRAPHICS] = enabled
         }
     }
 }
