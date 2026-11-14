@@ -70,7 +70,6 @@ fun SnowSettingsMenu(
     var accumulationRate by remember(settings.accumulationRate) { mutableFloatStateOf(settings.accumulationRate) }
     var snowbankHeight by remember(settings.snowbankHeight) { mutableFloatStateOf(settings.snowbankHeight) }
     var snowflakeSize by remember(settings.snowflakeSize) { mutableFloatStateOf(settings.snowflakeSize) }
-    var unlockSnowAmount by remember(settings.unlockSnowAmount) { mutableFloatStateOf(settings.unlockSnowAmount) }
 
     val isScarlet = settings.colorTheme == SnowColorTheme.SCARLET
     val primaryAccent = if (isScarlet) Color(0xFFF87171) else Color(0xFF93C5FD)
@@ -380,8 +379,7 @@ fun SnowSettingsMenu(
                                         intensity = intensity,
                                         accumulationRate = accumulationRate,
                                         snowbankHeight = snowbankHeight,
-                                        snowflakeSize = snowflakeSize,
-                                        unlockSnowAmount = unlockSnowAmount
+                                        snowflakeSize = snowflakeSize
                                     )
                                 )
                             },
@@ -423,8 +421,7 @@ fun SnowSettingsMenu(
                                         intensity = intensity,
                                         accumulationRate = accumulationRate,
                                         snowbankHeight = snowbankHeight,
-                                        snowflakeSize = snowflakeSize,
-                                        unlockSnowAmount = unlockSnowAmount
+                                        snowflakeSize = snowflakeSize
                                     )
                                 )
                             },
@@ -437,20 +434,20 @@ fun SnowSettingsMenu(
                         )
                     }
 
-                    // 7. Ползунок интенсивности снегопада
+                    // 7. Ползунок интенсивности (количества снежинок)
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "Интенсивность снегопада",
+                                text = "Количество снежинок",
                                 color = Color(0xFFE2E8F0),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium
                             )
                             Text(
-                                text = "$intensity снежинок",
+                                text = intensity.toString(),
                                 color = primaryAccent,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold
@@ -466,8 +463,7 @@ fun SnowSettingsMenu(
                                         intensity = intensity,
                                         accumulationRate = accumulationRate,
                                         snowbankHeight = snowbankHeight,
-                                        snowflakeSize = snowflakeSize,
-                                        unlockSnowAmount = unlockSnowAmount
+                                        snowflakeSize = snowflakeSize
                                     )
                                 )
                             },
@@ -509,8 +505,7 @@ fun SnowSettingsMenu(
                                         intensity = intensity,
                                         accumulationRate = accumulationRate,
                                         snowbankHeight = snowbankHeight,
-                                        snowflakeSize = snowflakeSize,
-                                        unlockSnowAmount = unlockSnowAmount
+                                        snowflakeSize = snowflakeSize
                                     )
                                 )
                             },
@@ -552,8 +547,7 @@ fun SnowSettingsMenu(
                                         intensity = intensity,
                                         accumulationRate = accumulationRate,
                                         snowbankHeight = snowbankHeight,
-                                        snowflakeSize = snowflakeSize,
-                                        unlockSnowAmount = unlockSnowAmount
+                                        snowflakeSize = snowflakeSize
                                     )
                                 )
                             },
@@ -566,9 +560,7 @@ fun SnowSettingsMenu(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(2.dp))
-
-                    // Переключатель снегопада поверх всех приложений
+                    // 10. Переключатель оверлея поверх всех приложений
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -585,7 +577,7 @@ fun SnowSettingsMenu(
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                text = "Снегопад на рабочем столе и поверх других приложений",
+                                text = "Падающий снег на рабочем столе и поверх других приложений",
                                 color = Color(0xFF94A3B8),
                                 fontSize = 12.sp
                             )
@@ -600,98 +592,6 @@ fun SnowSettingsMenu(
                                 uncheckedTrackColor = Color(0xFF334155)
                             )
                         )
-                    }
-
-                    // Переключатель создания сугроба при разблокировке
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Color(0x331E293B), RoundedCornerShape(12.dp))
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
-                            Text(
-                                text = "Сугроб при разблокировке",
-                                color = Color.White,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                text = "Засыпать экран снегом после включения для расчистки пальцем или встряхиванием",
-                                color = Color(0xFF94A3B8),
-                                fontSize = 12.sp
-                            )
-                        }
-                        Switch(
-                            checked = settings.isUnlockAccumulationEnabled,
-                            onCheckedChange = { enabled ->
-                                onSettingsChanged(
-                                    settings.copy(isUnlockAccumulationEnabled = enabled)
-                                )
-                            },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = primaryAccent,
-                                checkedTrackColor = activeTrackColor,
-                                uncheckedThumbColor = Color(0xFF64748B),
-                                uncheckedTrackColor = Color(0xFF334155)
-                            )
-                        )
-                    }
-
-                    // 10. Ползунок количества снега для разблокировки экрана
-                    if (settings.isUnlockAccumulationEnabled) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(Color(0x331E293B), RoundedCornerShape(12.dp))
-                                .padding(horizontal = 14.dp, vertical = 10.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = "Количество снега при разблокировке",
-                                    color = Color(0xFFE2E8F0),
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    text = "${(unlockSnowAmount * 100).roundToInt()}%",
-                                    color = primaryAccent,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                            Slider(
-                                value = unlockSnowAmount,
-                                onValueChange = { newValue ->
-                                    val rounded = (newValue * 20).roundToInt() / 20f
-                                    unlockSnowAmount = rounded.coerceIn(
-                                        SnowSettings.MIN_UNLOCK_SNOW_AMOUNT,
-                                        SnowSettings.MAX_UNLOCK_SNOW_AMOUNT
-                                    )
-                                    onSettingsChanged(
-                                        settings.copy(
-                                            fallSpeed = fallSpeed,
-                                            intensity = intensity,
-                                            accumulationRate = accumulationRate,
-                                            snowbankHeight = snowbankHeight,
-                                            snowflakeSize = snowflakeSize,
-                                            unlockSnowAmount = unlockSnowAmount
-                                        )
-                                    )
-                                },
-                                valueRange = SnowSettings.MIN_UNLOCK_SNOW_AMOUNT..SnowSettings.MAX_UNLOCK_SNOW_AMOUNT,
-                                colors = SliderDefaults.colors(
-                                    thumbColor = primaryAccent,
-                                    activeTrackColor = activeTrackColor,
-                                    inactiveTrackColor = activeTrackColor.copy(alpha = 0.2f)
-                                )
-                            )
-                        }
                     }
 
                     Spacer(modifier = Modifier.height(4.dp))

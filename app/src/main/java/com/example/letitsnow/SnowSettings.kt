@@ -52,8 +52,6 @@ data class SnowSettings(
     val accumulationRate: Float = DEFAULT_ACCUMULATION_RATE,
     val isOverlayEnabled: Boolean = false,
     val snowbankHeight: Float = DEFAULT_SNOWBANK_HEIGHT,
-    val isUnlockAccumulationEnabled: Boolean = true,
-    val unlockSnowAmount: Float = DEFAULT_UNLOCK_SNOW_AMOUNT,
     val snowflakeSize: Float = DEFAULT_SNOWFLAKE_SIZE,
     val snowflakeStyle: SnowflakeStyle = SnowflakeStyle.FAIRYTALE,
     val colorTheme: SnowColorTheme = SnowColorTheme.WHITE,
@@ -81,10 +79,6 @@ data class SnowSettings(
         const val MIN_SNOWFLAKE_SIZE = 0.5f
         const val MAX_SNOWFLAKE_SIZE = 2.5f
         const val DEFAULT_SNOWFLAKE_SIZE = 1.0f
-
-        const val MIN_UNLOCK_SNOW_AMOUNT = 0.05f
-        const val MAX_UNLOCK_SNOW_AMOUNT = 1.0f
-        const val DEFAULT_UNLOCK_SNOW_AMOUNT = 0.15f // 15%
     }
 }
 
@@ -99,8 +93,6 @@ class SnowSettingsRepository(private val context: Context) {
         val KEY_ACCUMULATION_RATE = floatPreferencesKey("snow_accumulation_rate")
         val KEY_OVERLAY_ENABLED = booleanPreferencesKey("snow_overlay_enabled")
         val KEY_SNOWBANK_HEIGHT = floatPreferencesKey("snowbank_height")
-        val KEY_UNLOCK_ACCUMULATION = booleanPreferencesKey("unlock_accumulation_enabled")
-        val KEY_UNLOCK_SNOW_AMOUNT = floatPreferencesKey("unlock_snow_amount")
         val KEY_SNOWFLAKE_SIZE = floatPreferencesKey("snowflake_size")
         val KEY_SNOWFLAKE_STYLE = stringPreferencesKey("snowflake_style")
         val KEY_COLOR_THEME = stringPreferencesKey("snow_color_theme")
@@ -144,8 +136,6 @@ class SnowSettingsRepository(private val context: Context) {
                 accumulationRate = preferences[PreferencesKeys.KEY_ACCUMULATION_RATE] ?: SnowSettings.DEFAULT_ACCUMULATION_RATE,
                 isOverlayEnabled = preferences[PreferencesKeys.KEY_OVERLAY_ENABLED] ?: false,
                 snowbankHeight = preferences[PreferencesKeys.KEY_SNOWBANK_HEIGHT] ?: SnowSettings.DEFAULT_SNOWBANK_HEIGHT,
-                isUnlockAccumulationEnabled = preferences[PreferencesKeys.KEY_UNLOCK_ACCUMULATION] ?: true,
-                unlockSnowAmount = preferences[PreferencesKeys.KEY_UNLOCK_SNOW_AMOUNT] ?: SnowSettings.DEFAULT_UNLOCK_SNOW_AMOUNT,
                 snowflakeSize = preferences[PreferencesKeys.KEY_SNOWFLAKE_SIZE] ?: SnowSettings.DEFAULT_SNOWFLAKE_SIZE,
                 snowflakeStyle = styleFlake,
                 colorTheme = colorTheme,
@@ -165,8 +155,6 @@ class SnowSettingsRepository(private val context: Context) {
             preferences[PreferencesKeys.KEY_ACCUMULATION_RATE] = settings.accumulationRate
             preferences[PreferencesKeys.KEY_OVERLAY_ENABLED] = settings.isOverlayEnabled
             preferences[PreferencesKeys.KEY_SNOWBANK_HEIGHT] = settings.snowbankHeight
-            preferences[PreferencesKeys.KEY_UNLOCK_ACCUMULATION] = settings.isUnlockAccumulationEnabled
-            preferences[PreferencesKeys.KEY_UNLOCK_SNOW_AMOUNT] = settings.unlockSnowAmount
             preferences[PreferencesKeys.KEY_SNOWFLAKE_SIZE] = settings.snowflakeSize
             preferences[PreferencesKeys.KEY_SNOWFLAKE_STYLE] = settings.snowflakeStyle.name
             preferences[PreferencesKeys.KEY_COLOR_THEME] = settings.colorTheme.name
@@ -203,18 +191,6 @@ class SnowSettingsRepository(private val context: Context) {
     suspend fun saveSnowbankHeight(snowbankHeight: Float) {
         context.snowDataStore.edit { preferences ->
             preferences[PreferencesKeys.KEY_SNOWBANK_HEIGHT] = snowbankHeight
-        }
-    }
-
-    suspend fun saveUnlockAccumulationEnabled(enabled: Boolean) {
-        context.snowDataStore.edit { preferences ->
-            preferences[PreferencesKeys.KEY_UNLOCK_ACCUMULATION] = enabled
-        }
-    }
-
-    suspend fun saveUnlockSnowAmount(amount: Float) {
-        context.snowDataStore.edit { preferences ->
-            preferences[PreferencesKeys.KEY_UNLOCK_SNOW_AMOUNT] = amount
         }
     }
 

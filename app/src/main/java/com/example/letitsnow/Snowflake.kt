@@ -87,9 +87,7 @@ data class Snowflake(
 
         val effRadius = radius * sizeMultiplier
 
-        // В режиме «Снег на горизонтально лежащем телефоне»:
-        // Снежинки непрерывно падают через весь экран поверх лежащего снега,
-        // не останавливаясь и не восстанавливая очищенные пальцем участки
+        // В режиме снежного покрова на горизонтальном экране
         if (accumulation.isSurfaceCoverActive) {
             if (y - effRadius > height) {
                 reset(width, height, density, isInitial = false)

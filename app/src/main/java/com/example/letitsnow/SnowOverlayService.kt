@@ -13,13 +13,8 @@ import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.content.res.Configuration
 import android.graphics.PixelFormat
-import android.hardware.SensorManager
 import android.os.Build
 import android.os.IBinder
-import android.os.SystemClock
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.os.VibratorManager
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
@@ -33,24 +28,23 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
- * Foreground Service, обеспечивающий отображение снегопада и сугробов
- * поверх всех приложений с помощью WindowManager (TYPE_APPLICATION_OVERLAY).
+ * Foreground Service, обеспечивающий отображение снегопада и сугроба внизу экрана
+ * поверх всех приложений и функциональных кнопок с помощью WindowManager (TYPE_APPLICATION_OVERLAY).
  *
- * Во время активного использования телефона оверлей работает в режиме сквозных касаний
- * (FLAG_NOT_TOUCHABLE). Во время блокировки экран не расходует батарею (анимация на паузе).
- * При разблокировке, если включена соответствующая настройка, экран засыпается снегом
- * и оверлей временно становится интерактивным для расчистки пальцем или встряхиванием телефона.
+ * Оверлей активен только тогда, когда устройство разблокировано.
+ * Работает в режиме сквозных касаний (FLAG_NOT_TOUCHABLE), благодаря чему функциональные
+ * кнопки (Назад, Домой, Меню / полоса жестов) нажимаются без каких-либо задержек и помех.
+ * При выключенном экране или экране блокировки анимация скрывается и не расходует батарею.
  */
 class SnowOverlayService : Service() {
 
     companion object {
         const val ACTION_START = "com.example.letitsnow.ACTION_START"
         const val ACTION_STOP = "com.example.letitsnow.ACTION_STOP"
-        const val ACTION_WIPE = "com.example.letitsnow.ACTION_WIPE"
-        const val ACTION_UNLOCKED = "com.example.letitsnow.ACTION_UNLOCKED"
 
         private const val NOTIFICATION_CHANNEL_ID = "snow_overlay_channel"
         private const val NOTIFICATION_ID = 1001
@@ -75,22 +69,6 @@ class SnowOverlayService : Service() {
             }
             context.startService(intent)
         }
-
-        /**
-         * Уведомляет сервис о снятии блокировки экрана (пользователь разблокировал телефон).
-         */
-        fun onUnlocked(context: Context) {
-            val intent = Intent(context, SnowOverlayService::class.java).apply {
-                action = ACTION_UNLOCKED
-            }
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(intent)
-                } else {
-                    context.startService(intent)
-                }
-            } catch (_: Exception) { }
-        }
     }
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -98,103 +76,66 @@ class SnowOverlayService : Service() {
     private lateinit var layoutParams: WindowManager.LayoutParams
     private lateinit var snowView: SnowView
     private lateinit var settingsRepository: SnowSettingsRepository
-
-    private var currentSettings: SnowSettings = SnowSettings()
-    private var lastScreenOffTime: Long = 0L
     private var unlockCheckJob: Job? = null
-    private var shakeDetector: ShakeDetector? = null
+
+    private fun isDeviceLocked(): Boolean {
+        val km = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+        return km?.isKeyguardLocked == true
+    }
+
+    private fun showOverlay() {
+        unlockCheckJob?.cancel()
+        unlockCheckJob = null
+        if (::snowView.isInitialized) {
+            snowView.visibility = View.VISIBLE
+            snowView.start()
+        }
+    }
+
+    private fun hideOverlay() {
+        unlockCheckJob?.cancel()
+        unlockCheckJob = null
+        if (::snowView.isInitialized) {
+            snowView.visibility = View.GONE
+            snowView.pause()
+        }
+    }
 
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
-            val isLocked = keyguardManager?.isKeyguardLocked == true
-
             when (intent?.action) {
                 Intent.ACTION_SCREEN_OFF -> {
-                    // Экран погас: фиксируем время, останавливаем анимацию и акселерометр
-                    lastScreenOffTime = SystemClock.elapsedRealtime()
-                    unlockCheckJob?.cancel()
-                    unlockCheckJob = null
-                    shakeDetector?.stop()
-                    if (::snowView.isInitialized) {
-                        snowView.pause()
-                    }
+                    // Экран погас: скрываем оверлей для экономии батареи
+                    hideOverlay()
                 }
 
                 Intent.ACTION_SCREEN_ON -> {
-                    // Экран загорелся
-                    if (::snowView.isInitialized) {
-                        snowView.start()
-                    }
-
-                    if (isLocked) {
-                        // Запускаем периодическую проверку снятия блокировки.
-                        // Это решает проблему устройств со свайпом (без пароля), Smart Lock или Face Unlock,
-                        // где система Android НЕ рассылает событие ACTION_USER_PRESENT.
+                    // Экран загорелся: если заблокирован, скрываем и ждем разблокировки
+                    if (isDeviceLocked()) {
+                        hideOverlay()
                         unlockCheckJob?.cancel()
                         unlockCheckJob = serviceScope.launch {
-                            for (step in 0..75) { // Проверяем каждые 400мс до 30 секунд
+                            for (step in 0..75) { // Проверяем до 30 секунд каждые 400мс
                                 delay(400)
-                                val km = getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
-                                if (km?.isKeyguardLocked == false) {
-                                    handleDeviceUnlocked()
+                                if (!isActive) break
+                                if (!isDeviceLocked()) {
+                                    showOverlay()
                                     break
                                 }
                             }
                         }
                     } else {
-                        // Экран включился уже разблокированным (например, отпечаток пальца при погасшем экране)
-                        handleDeviceUnlocked()
+                        // Экран включился уже разблокированным (отпечаток на кнопке и т.д.)
+                        showOverlay()
                     }
                 }
 
                 Intent.ACTION_USER_PRESENT -> {
-                    // Пользователь снял устройство с системной блокировки (ввел PIN / пароль)
-                    handleDeviceUnlocked()
+                    // Пользователь разблокировал экран
+                    showOverlay()
                 }
             }
         }
-    }
-
-    private fun handleDeviceUnlocked() {
-        unlockCheckJob?.cancel()
-        unlockCheckJob = null
-
-        if (::snowView.isInitialized) {
-            snowView.start()
-        }
-
-        // Если выключено создание сугроба при разблокировке, не засыпаем экран
-        if (!currentSettings.isUnlockAccumulationEnabled) {
-            lastScreenOffTime = 0L
-            return
-        }
-
-        // Если оверлей уже засыпан и находится в интерактивном режиме, не засыпаем повторно
-        if (::snowView.isInitialized && snowView.isInteractive) {
-            return
-        }
-
-        val elapsedSeconds = if (lastScreenOffTime > 0L) {
-            val diff = (SystemClock.elapsedRealtime() - lastScreenOffTime) / 1000f
-            lastScreenOffTime = 0L
-            diff
-        } else {
-            15f // Гарантированный фолбэк для засыпания экрана
-        }
-        triggerSnowAccumulation(elapsedSeconds)
-    }
-
-    private fun triggerSnowAccumulation(elapsedSeconds: Float) {
-        if (!::snowView.isInitialized) return
-        val effectiveSeconds = maxOf(elapsedSeconds, 5f)
-        snowView.accumulation.accumulateOfflineSnow(
-            elapsedSeconds = effectiveSeconds,
-            rateMultiplier = snowView.accumulationRateMultiplier,
-            amountRatio = currentSettings.unlockSnowAmount
-        )
-        setInteractiveMode(true)
-        snowView.invalidate()
     }
 
     override fun onCreate() {
@@ -205,15 +146,7 @@ class SnowOverlayService : Service() {
         }
         isRunning = true
         settingsRepository = SnowSettingsRepository(this)
-        windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
-
-        // Инициализируем детектор встряхивания телефона для расчистки сугроба
-        val sensorManager = getSystemService(Context.SENSOR_SERVICE) as? SensorManager
-        if (sensorManager != null) {
-            shakeDetector = ShakeDetector(sensorManager) {
-                handleShake()
-            }
-        }
+        windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
         createNotificationChannel()
         startAsForeground()
@@ -221,32 +154,6 @@ class SnowOverlayService : Service() {
         initOverlayView()
         registerScreenReceiver()
         observeSettings()
-    }
-
-    private fun handleShake() {
-        if (!::snowView.isInitialized || !snowView.isInteractive) return
-        triggerHapticFeedback()
-        snowView.accumulation.clearAllSnow()
-        snowView.invalidate()
-        setInteractiveMode(false)
-    }
-
-    private fun triggerHapticFeedback() {
-        try {
-            val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                val vm = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
-                vm?.defaultVibrator
-            } else {
-                @Suppress("DEPRECATION")
-                getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrator?.vibrate(VibrationEffect.createOneShot(45, VibrationEffect.DEFAULT_AMPLITUDE))
-            } else {
-                @Suppress("DEPRECATION")
-                vibrator?.vibrate(45)
-            }
-        } catch (_: Exception) { }
     }
 
     private fun getRealScreenSize(): Pair<Int, Int> {
@@ -262,29 +169,12 @@ class SnowOverlayService : Service() {
     }
 
     private fun initOverlayView() {
-        if (!Settings.canDrawOverlays(this)) {
-            stopSelf()
-            return
+        snowView = SnowView(this).apply {
+            isOverlayMode = true
         }
 
         val (realW, realH) = getRealScreenSize()
-
-        snowView = SnowView(this).apply {
-            isOverlayMode = true
-            isInteractive = false
-            fitsSystemWindows = false
-            @Suppress("DEPRECATION")
-            systemUiVisibility = (
-                View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
-                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
-                View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-            )
-            updateCanvasSize(realW.toFloat(), realH.toFloat())
-            onSnowClearedListener = {
-                // Когда пользователь расчистил снег, возвращаем сквозной режим
-                setInteractiveMode(false)
-            }
-        }
+        snowView.updateCanvasSize(realW.toFloat(), realH.toFloat())
 
         val windowType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -311,7 +201,7 @@ class SnowOverlayService : Service() {
             x = 0
             y = 0
 
-            // Разрешаем отрисовку во всю площадь экрана без отступов под системные панели (навигация/статус-бар)
+            // Разрешаем отрисовку во всю площадь экрана без отступов под системные панели
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 fitInsetsTypes = 0
                 fitInsetsSides = 0
@@ -326,37 +216,19 @@ class SnowOverlayService : Service() {
 
         try {
             windowManager.addView(snowView, layoutParams)
-            snowView.start()
+            if (isDeviceLocked()) {
+                hideOverlay()
+            } else {
+                showOverlay()
+            }
         } catch (_: Exception) {
             stopSelf()
         }
     }
 
-    private fun setInteractiveMode(interactive: Boolean) {
-        if (!::snowView.isInitialized) return
-        snowView.isInteractive = interactive
-
-        if (interactive) {
-            // Разрешаем касания для очистки снега пальцем и включаем акселерометр
-            layoutParams.flags = layoutParams.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
-            shakeDetector?.start()
-        } else {
-            // Возвращаем полностью сквозной режим и отключаем акселерометр (0% расхода батареи)
-            layoutParams.flags = layoutParams.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
-            shakeDetector?.stop()
-        }
-
-        try {
-            if (snowView.isAttachedToWindow) {
-                windowManager.updateViewLayout(snowView, layoutParams)
-            }
-        } catch (_: Exception) { }
-    }
-
     private fun observeSettings() {
         serviceScope.launch {
             settingsRepository.settingsFlow.collectLatest { settings ->
-                currentSettings = settings
                 if (::snowView.isInitialized) {
                     snowView.applySettings(settings)
                 }
@@ -412,16 +284,6 @@ class SnowOverlayService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val wipeIntent = Intent(this, SnowOverlayService::class.java).apply {
-            action = ACTION_WIPE
-        }
-        val wipePendingIntent = PendingIntent.getService(
-            this,
-            2,
-            wipeIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setContentTitle("SnowOverlay активен")
             .setContentText("Снегопад поверх всех приложений")
@@ -429,7 +291,6 @@ class SnowOverlayService : Service() {
             .setContentIntent(mainPendingIntent)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
-            .addAction(0, "Почистить снег", wipePendingIntent)
             .addAction(0, "Остановить", stopPendingIntent)
             .build()
     }
@@ -459,19 +320,13 @@ class SnowOverlayService : Service() {
                 return START_NOT_STICKY
             }
 
-            ACTION_WIPE -> {
-                if (::snowView.isInitialized) {
-                    triggerSnowAccumulation(25f)
-                }
-            }
-
-            ACTION_UNLOCKED -> {
-                handleDeviceUnlocked()
-            }
-
             ACTION_START -> {
                 if (::snowView.isInitialized) {
-                    snowView.start()
+                    if (isDeviceLocked()) {
+                        hideOverlay()
+                    } else {
+                        showOverlay()
+                    }
                 }
             }
         }
@@ -495,8 +350,6 @@ class SnowOverlayService : Service() {
         isRunning = false
         unlockCheckJob?.cancel()
         unlockCheckJob = null
-        shakeDetector?.stop()
-        shakeDetector = null
 
         try {
             unregisterReceiver(screenReceiver)

@@ -14,7 +14,7 @@ import kotlin.math.sin
 /**
  * Двумерная физическая модель накопления снега (2D Snow Density Grid)
  * с поддержкой двух режимов:
- * 1. Режим «Снег на горизонтально лежащем телефоне» (активируется после разблокировки экрана):
+ * 1. Режим «Снег на горизонтально лежащем телефоне»:
  *    Равномерный естественный снежный покров по всей плоскости стекла с чистым следом от пальца,
  *    мягкими кромками, снежными валиками и микрокристаллической структурой.
  * 2. Обычный фоновый режим сугроба у нижнего края экрана с поддержкой 4 стилей:
@@ -41,8 +41,7 @@ class SnowAccumulation {
         private set
 
     /**
-     * Активен ли режим снежного покрова на горизонтально лежащем экране
-     * (активируется после разблокировки устройства).
+     * Активен ли режим снежного покрова на горизонтально лежащем экране.
      */
     var isSurfaceCoverActive: Boolean = false
         private set
@@ -866,6 +865,7 @@ class SnowAccumulation {
         val endY = smoothSurfaceY[cols - 1].coerceAtMost(height)
         mainPath.lineTo(width, endY)
         crestPath.lineTo(width, endY)
+
         mainPath.lineTo(width, height)
         mainPath.close()
 
@@ -932,6 +932,7 @@ class SnowAccumulation {
         val endY = smoothSurfaceY[cols - 1].coerceAtMost(height)
         mainPath.lineTo(width, endY)
         crestPath.lineTo(width, endY)
+
         mainPath.lineTo(width, height)
         mainPath.close()
 
@@ -1055,26 +1056,21 @@ class SnowAccumulation {
     }
 
     /**
-     * Заполнение экрана снегом после разблокировки экрана:
-     * Концепция «Снег на горизонтально лежащем телефоне».
+     * Заполнение экрана снегом:
      * Равномерно и естественно покрывает всю площадь экрана слоем снега
      * с микрорельефом, естественной текстурой и кристаллическими вариациями.
-     * Параметр [amountRatio] задает плотность/толщину слоя (стандарт 15% / 0.15f).
      */
     fun accumulateOfflineSnow(
         elapsedSeconds: Float = 0f,
         rateMultiplier: Float = 1f,
-        amountRatio: Float = SnowSettings.DEFAULT_UNLOCK_SNOW_AMOUNT
+        amountRatio: Float = 0.15f
     ) {
         if (cols <= 0 || rows <= 0) return
 
         isSurfaceCoverActive = true
         surfaceClearedMask.fill(false)
 
-        val targetRatio = amountRatio.coerceIn(
-            SnowSettings.MIN_UNLOCK_SNOW_AMOUNT,
-            SnowSettings.MAX_UNLOCK_SNOW_AMOUNT
-        )
+        val targetRatio = amountRatio.coerceIn(0.05f, 1.0f)
         val baseDensity = (targetRatio * (1.0f + (elapsedSeconds * 0.005f * rateMultiplier))).coerceIn(targetRatio * 0.85f, 1.0f)
 
         for (r in 0 until rows) {

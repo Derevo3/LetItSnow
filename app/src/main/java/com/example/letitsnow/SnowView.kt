@@ -5,7 +5,6 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.Choreographer
 import android.view.MotionEvent
@@ -14,11 +13,10 @@ import android.view.View
 /**
  * Кастомный View с четким разделением двух слоев:
  * Слой 1 — плавно падающие снежинки (не зависят от касаний, не застывают в воздухе).
- * Слой 2 — физически накопившийся снег:
- *   - В режиме «Снег на горизонтально лежащем телефоне» (после разблокировки):
- *     снежный покров на всей плоскости стекла экрана с чистым следом от пальца.
- *   - В обычном режиме:
- *     сугроб у нижнего края экрана с выбранным стилем.
+ * Слой 2 — физически накопившийся снег у нижнего края экрана (сугроб поверх функциональных кнопок).
+ *
+ * В режиме оверлея поверх приложений (isOverlayMode = true) отображается падающий снег
+ * и сугроб внизу экрана поверх функциональных кнопок со сквозным прохождением касаний.
  */
 class SnowView @JvmOverloads constructor(
     context: Context,
@@ -72,11 +70,6 @@ class SnowView @JvmOverloads constructor(
     var useDetailedGraphics: Boolean = true
 
     /**
-     * Количество снега при разблокировке (0.05 .. 1.0, по умолчанию 15% = 0.15).
-     */
-    var unlockSnowAmount: Float = SnowSettings.DEFAULT_UNLOCK_SNOW_AMOUNT
-
-    /**
      * Целевое количество одновременно отображаемых снежинок (10 .. 300).
      */
     var targetSnowflakeCount: Int = SnowSettings.DEFAULT_INTENSITY
@@ -104,16 +97,6 @@ class SnowView @JvmOverloads constructor(
             }
         }
 
-    /**
-     * Интерактивный режим (активируется при разблокировке для очистки снега пальцем).
-     */
-    var isInteractive: Boolean = false
-
-    /**
-     * Обратный вызов при очистке снега (для возврата в сквозной режим FLAG_NOT_TOUCHABLE).
-     */
-    var onSnowClearedListener: (() -> Unit)? = null
-
     val accumulation: SnowAccumulation
         get() = snowAccumulation
 
@@ -125,29 +108,6 @@ class SnowView @JvmOverloads constructor(
     private val flakePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         style = Paint.Style.FILL
-    }
-
-    private val dismissButtonRect = RectF()
-    private val dismissBtnBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xCC0F172A.toInt()
-        style = Paint.Style.FILL
-    }
-    private val dismissBtnBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0x8860A5FA.toInt()
-        style = Paint.Style.STROKE
-        strokeWidth = 1.5f * density
-    }
-    private val dismissTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
-        textSize = 14f * density
-        textAlign = Paint.Align.CENTER
-        isFakeBoldText = true
-    }
-    private val shakeHintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xDDFFFFFF.toInt()
-        textSize = 12f * density
-        textAlign = Paint.Align.CENTER
-        setShadowLayer(4f * density, 0f, 1f * density, 0xCC000000.toInt())
     }
 
     private var isRunning = false
@@ -180,7 +140,7 @@ class SnowView @JvmOverloads constructor(
                         }
                     }
 
-                    snowAccumulation.allowGrowthAboveBase = !(isOverlayMode && !isInteractive)
+                    snowAccumulation.allowGrowthAboveBase = !isOverlayMode
 
                     for (i in 0 until snowflakes.size) {
                         snowflakes[i].update(
@@ -214,12 +174,6 @@ class SnowView @JvmOverloads constructor(
             snowMask.setSize(dm.widthPixels.toFloat(), dm.heightPixels.toFloat(), density)
             snowAccumulation.setSize(dm.widthPixels.toFloat(), dm.heightPixels.toFloat(), density)
             initSnowflakes(dm.widthPixels.toFloat(), dm.heightPixels.toFloat())
-
-            val btnW = 160f * density
-            val btnH = 38f * density
-            val left = (dm.widthPixels - btnW) / 2f
-            val top = 48f * density
-            dismissButtonRect.set(left, top, left + btnW, top + btnH)
         }
 
         if (isOverlayMode) {
@@ -243,7 +197,6 @@ class SnowView @JvmOverloads constructor(
         isGlowEnabled = settings.isGlowEnabled
         snowbankStyle = settings.snowbankStyle
         useDetailedGraphics = settings.useDetailedGraphics
-        unlockSnowAmount = settings.unlockSnowAmount
         invalidate()
     }
 
@@ -255,12 +208,6 @@ class SnowView @JvmOverloads constructor(
             snowMask.setSize(w, h, density)
             snowAccumulation.setSize(w, h, density)
             initSnowflakes(w, h)
-
-            val btnW = 160f * density
-            val btnH = 38f * density
-            val left = (w - btnW) / 2f
-            val top = 48f * density
-            dismissButtonRect.set(left, top, left + btnW, top + btnH)
             invalidate()
         }
     }
@@ -288,80 +235,30 @@ class SnowView @JvmOverloads constructor(
         val activeBankStyle = snowbankStyle
         val isBloody = activeColorTheme == SnowColorTheme.SCARLET
 
-        if (snowAccumulation.isSurfaceCoverActive) {
-            // В режиме «Снег на горизонтально лежащем телефоне»:
-            // Слой 1: Снежный покров на плоскости стекла
-            snowAccumulation.draw(canvas, activeBankStyle, isBloody)
-
-            // Слой 2: Падающие снежинки поверх снежного покрова
-            for (i in 0 until snowflakes.size) {
-                snowflakes[i].draw(
-                    canvas = canvas,
-                    paint = flakePaint,
-                    density = density,
-                    style = activeFlakeStyle,
-                    colorTheme = activeColorTheme,
-                    isGlowEnabled = activeGlow,
-                    sizeMultiplier = snowflakeSizeMultiplier
-                )
-            }
-        } else {
-            // В обычном режиме: снежинки падают в сугроб у нижнего края экрана
-            for (i in 0 until snowflakes.size) {
-                snowflakes[i].draw(
-                    canvas = canvas,
-                    paint = flakePaint,
-                    density = density,
-                    style = activeFlakeStyle,
-                    colorTheme = activeColorTheme,
-                    isGlowEnabled = activeGlow,
-                    sizeMultiplier = snowflakeSizeMultiplier
-                )
-            }
-            snowAccumulation.draw(canvas, activeBankStyle, isBloody)
+        for (i in 0 until snowflakes.size) {
+            snowflakes[i].draw(
+                canvas = canvas,
+                paint = flakePaint,
+                density = density,
+                style = activeFlakeStyle,
+                colorTheme = activeColorTheme,
+                isGlowEnabled = activeGlow,
+                sizeMultiplier = snowflakeSizeMultiplier
+            )
         }
 
-        // Кнопка быстрого смахивания в интерактивном режиме оверлея
-        if (isInteractive && isOverlayMode) {
-            dismissBtnBgPaint.color = if (isBloody) 0xDD3B0712.toInt() else 0xCC0F172A.toInt()
-            dismissBtnBorderPaint.color = if (isBloody) 0xAAF87171.toInt() else 0x8860A5FA.toInt()
-            val r = 19f * density
-            canvas.drawRoundRect(dismissButtonRect, r, r, dismissBtnBgPaint)
-            canvas.drawRoundRect(dismissButtonRect, r, r, dismissBtnBorderPaint)
-            val textY = dismissButtonRect.centerY() - ((dismissTextPaint.descent() + dismissTextPaint.ascent()) / 2f)
-            canvas.drawText("Смахнуть снег ✕", dismissButtonRect.centerX(), textY, dismissTextPaint)
-
-            // Подсказка о возможности встряхивания устройства
-            val hintY = dismissButtonRect.bottom + 16f * density
-            canvas.drawText("или потрясите телефон \uD83D\uDCF3", dismissButtonRect.centerX(), hintY, shakeHintPaint)
-        }
+        snowAccumulation.draw(canvas, activeBankStyle, isBloody)
     }
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (isOverlayMode && !isInteractive) {
+        if (isOverlayMode) {
             return false
-        }
-
-        if (isInteractive && isOverlayMode && dismissButtonRect.contains(event.x, event.y)) {
-            if (event.actionMasked == MotionEvent.ACTION_UP) {
-                snowAccumulation.clearAllSnow()
-                invalidate()
-                onSnowClearedListener?.invoke()
-                performClick()
-            }
-            return true
         }
 
         val handled = snowMask.onTouchEvent(event, snowAccumulation)
         if (handled) {
             invalidate()
-            if (isOverlayMode && isInteractive) {
-                if (snowAccumulation.getClearedRatio() >= 0.70f) {
-                    snowAccumulation.clearAllSnow()
-                    onSnowClearedListener?.invoke()
-                }
-            }
             if (event.actionMasked == MotionEvent.ACTION_UP) {
                 performClick()
             }
