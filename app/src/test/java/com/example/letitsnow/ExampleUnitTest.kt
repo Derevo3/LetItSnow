@@ -27,6 +27,7 @@ class ExampleUnitTest {
         assertFalse(settings.isGlowEnabled)
         assertEquals(SnowbankStyle.SMOOTH_HILLS, settings.snowbankStyle)
         assertTrue(settings.useDetailedGraphics)
+        assertFalse(settings.isFirstLaunchCompleted)
     }
 
     @Test

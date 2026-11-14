@@ -57,7 +57,8 @@ data class SnowSettings(
     val colorTheme: SnowColorTheme = SnowColorTheme.WHITE,
     val isGlowEnabled: Boolean = false,
     val snowbankStyle: SnowbankStyle = SnowbankStyle.SMOOTH_HILLS,
-    val useDetailedGraphics: Boolean = true
+    val useDetailedGraphics: Boolean = true,
+    val isFirstLaunchCompleted: Boolean = false
 ) {
     companion object {
         const val MIN_FALL_SPEED = 0.1f
@@ -99,6 +100,7 @@ class SnowSettingsRepository(private val context: Context) {
         val KEY_GLOW_ENABLED = booleanPreferencesKey("snow_glow_enabled")
         val KEY_SNOWBANK_STYLE = stringPreferencesKey("snowbank_style")
         val KEY_USE_DETAILED_GRAPHICS = booleanPreferencesKey("use_detailed_graphics")
+        val KEY_FIRST_LAUNCH_COMPLETED = booleanPreferencesKey("first_launch_completed")
     }
 
     /**
@@ -141,7 +143,8 @@ class SnowSettingsRepository(private val context: Context) {
                 colorTheme = colorTheme,
                 isGlowEnabled = isGlowEnabled,
                 snowbankStyle = styleBank,
-                useDetailedGraphics = preferences[PreferencesKeys.KEY_USE_DETAILED_GRAPHICS] ?: true
+                useDetailedGraphics = preferences[PreferencesKeys.KEY_USE_DETAILED_GRAPHICS] ?: true,
+                isFirstLaunchCompleted = preferences[PreferencesKeys.KEY_FIRST_LAUNCH_COMPLETED] ?: false
             )
         }
 
@@ -161,6 +164,7 @@ class SnowSettingsRepository(private val context: Context) {
             preferences[PreferencesKeys.KEY_GLOW_ENABLED] = settings.isGlowEnabled
             preferences[PreferencesKeys.KEY_SNOWBANK_STYLE] = settings.snowbankStyle.name
             preferences[PreferencesKeys.KEY_USE_DETAILED_GRAPHICS] = settings.useDetailedGraphics
+            preferences[PreferencesKeys.KEY_FIRST_LAUNCH_COMPLETED] = settings.isFirstLaunchCompleted
         }
     }
 
@@ -170,6 +174,15 @@ class SnowSettingsRepository(private val context: Context) {
     suspend fun saveOverlayEnabled(enabled: Boolean) {
         context.snowDataStore.edit { preferences ->
             preferences[PreferencesKeys.KEY_OVERLAY_ENABLED] = enabled
+        }
+    }
+
+    /**
+     * Отметка о завершении первого запуска (онбординга).
+     */
+    suspend fun saveFirstLaunchCompleted(completed: Boolean = true) {
+        context.snowDataStore.edit { preferences ->
+            preferences[PreferencesKeys.KEY_FIRST_LAUNCH_COMPLETED] = completed
         }
     }
 }

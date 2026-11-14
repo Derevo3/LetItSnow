@@ -1,5 +1,9 @@
 package com.example.letitsnow
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -30,6 +34,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
@@ -44,6 +49,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -66,9 +72,31 @@ fun SnowSettingsMenu(
 ) {
     if (!isOpen) return
 
+    val context = LocalContext.current
+    val donateUrl = "https://boosty.to/LzheDmitrey/donate"
+    val openDonationLink = {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(donateUrl)).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        } catch (_: ActivityNotFoundException) {
+            Toast.makeText(
+                context,
+                "Не удалось найти браузер для открытия ссылки",
+                Toast.LENGTH_LONG
+            ).show()
+        } catch (e: Exception) {
+            Toast.makeText(
+                context,
+                "Не удалось открыть ссылку: ${e.localizedMessage ?: "неизвестная ошибка"}",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
     var fallSpeed by remember(settings.fallSpeed) { mutableFloatStateOf(settings.fallSpeed) }
     var intensity by remember(settings.intensity) { mutableIntStateOf(settings.intensity) }
-    var accumulationRate by remember(settings.accumulationRate) { mutableFloatStateOf(settings.accumulationRate) }
     var snowbankHeight by remember(settings.snowbankHeight) { mutableFloatStateOf(settings.snowbankHeight) }
     var snowflakeSize by remember(settings.snowflakeSize) { mutableFloatStateOf(settings.snowflakeSize) }
 
@@ -76,7 +104,6 @@ fun SnowSettingsMenu(
         return settings.copy(
             fallSpeed = fallSpeed,
             intensity = intensity,
-            accumulationRate = accumulationRate,
             snowbankHeight = snowbankHeight,
             snowflakeSize = snowflakeSize
         )
@@ -477,44 +504,7 @@ fun SnowSettingsMenu(
                         )
                     }
 
-                    // 8. Ползунок скорости накопления снега
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "Скорость накопления снега",
-                                color = Color(0xFFE2E8F0),
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Text(
-                                text = String.format(Locale.US, "%.1fx", accumulationRate),
-                                color = primaryAccent,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        Slider(
-                            value = accumulationRate,
-                            onValueChange = { newValue ->
-                                accumulationRate = (newValue * 10).roundToInt() / 10f
-                                onSettingsChanged(buildCurrentSettings())
-                            },
-                            onValueChangeFinished = {
-                                onSaveSettings(buildCurrentSettings())
-                            },
-                            valueRange = SnowSettings.MIN_ACCUMULATION_RATE..SnowSettings.MAX_ACCUMULATION_RATE,
-                            colors = SliderDefaults.colors(
-                                thumbColor = primaryAccent,
-                                activeTrackColor = activeTrackColor,
-                                inactiveTrackColor = activeTrackColor.copy(alpha = 0.2f)
-                            )
-                        )
-                    }
-
-                    // 9. Ползунок высоты сугроба
+                    // 8. Ползунок высоты сугроба
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -551,7 +541,7 @@ fun SnowSettingsMenu(
                         )
                     }
 
-                    // 10. Переключатель оверлея поверх всех приложений
+                    // 9. Переключатель оверлея поверх всех приложений
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -582,6 +572,39 @@ fun SnowSettingsMenu(
                                 uncheckedThumbColor = Color(0xFF64748B),
                                 uncheckedTrackColor = Color(0xFF334155)
                             )
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(2.dp))
+
+                    // Кнопка «Поддержать разработчика ❤️»
+                    OutlinedButton(
+                        onClick = openDonationLink,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(
+                            width = 1.dp,
+                            color = if (isScarlet) Color(0x66EF4444) else Color(0x55F43F5E)
+                        ),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = if (isScarlet) Color(0x22DC2626) else Color(0x1CF43F5E),
+                            contentColor = Color(0xFFFFF1F2)
+                        )
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_heart),
+                            contentDescription = null,
+                            tint = if (isScarlet) Color(0xFFF87171) else Color(0xFFFB7185),
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Поддержать разработчика ❤️",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFFFFF1F2)
                         )
                     }
 

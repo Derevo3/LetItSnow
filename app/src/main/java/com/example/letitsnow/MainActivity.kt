@@ -26,7 +26,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -44,7 +47,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -114,8 +119,22 @@ class MainActivity : ComponentActivity() {
             }
 
             var isSettingsOpen by remember { mutableStateOf(false) }
-            var showPermissionDialog by remember { mutableStateOf(false) }
             var isPendingOverlayActivation by remember { mutableStateOf(false) }
+
+            // Диалоги онбординга и последовательного запроса разрешений
+            var showWelcomeDialog by remember { mutableStateOf(false) }
+            var hasCheckedFirstLaunch by remember { mutableStateOf(false) }
+            var showOverlayPermissionRationale by remember { mutableStateOf(false) }
+            var showOverlayPermissionDeniedDialog by remember { mutableStateOf(false) }
+            var showNotificationRationale by remember { mutableStateOf(false) }
+
+            // Показываем приветствие один раз при первом открытии приложения
+            LaunchedEffect(currentSettings.isFirstLaunchCompleted) {
+                if (!currentSettings.isFirstLaunchCompleted && !hasCheckedFirstLaunch) {
+                    hasCheckedFirstLaunch = true
+                    showWelcomeDialog = true
+                }
+            }
 
             // Функция полного выключения снегопада и выхода из приложения
             val stopAndExitApp: () -> Unit = {
@@ -127,30 +146,32 @@ class MainActivity : ComponentActivity() {
                 (context as? ComponentActivity)?.finish()
             }
 
-            // Лаунчер запроса разрешения на показ уведомлений (Android 13+)
-            val notificationPermissionLauncher = rememberLauncherForActivityResult(
-                contract = ActivityResultContracts.RequestPermission()
-            ) { isGranted ->
-                if (isGranted || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-                    SnowOverlayService.start(context)
-                    coroutineScope.launch {
-                        settingsRepository.saveOverlayEnabled(true)
-                    }
+            // Прямой запуск оверлей-сервиса с сохранением состояния
+            val launchOverlayServiceDirectly = {
+                SnowOverlayService.start(context)
+                coroutineScope.launch {
+                    settingsRepository.saveOverlayEnabled(true)
                 }
             }
 
-            // Функция запуска оверлей-сервиса с проверкой уведомлений
-            val launchOverlayService = {
+            // Лаунчер запроса разрешения на показ уведомлений (Android 13+)
+            val notificationPermissionLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.RequestPermission()
+            ) { _ ->
+                // На Android 13+ служба Foreground Service может работать даже при отклонении уведомлений.
+                // Приложение сохраняет работоспособность в соответствии с требованиями системы.
+                launchOverlayServiceDirectly()
+            }
+
+            // Проверка необходимости запроса разрешения на уведомления перед запуском оверлея
+            val launchOverlayServiceWithCheck = {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
-                    != PackageManager.PERMISSION_GRANTED
+                    (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED)
                 ) {
-                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    showNotificationRationale = true
                 } else {
-                    SnowOverlayService.start(context)
-                    coroutineScope.launch {
-                        settingsRepository.saveOverlayEnabled(true)
-                    }
+                    launchOverlayServiceDirectly()
                 }
             }
 
@@ -160,7 +181,21 @@ class MainActivity : ComponentActivity() {
             ) {
                 if (Settings.canDrawOverlays(context)) {
                     isPendingOverlayActivation = false
-                    launchOverlayService()
+                    showOverlayPermissionDeniedDialog = false
+                    if (!currentSettings.isFirstLaunchCompleted) {
+                        coroutineScope.launch {
+                            settingsRepository.saveFirstLaunchCompleted(true)
+                        }
+                    }
+                    launchOverlayServiceWithCheck()
+                } else if (isPendingOverlayActivation) {
+                    isPendingOverlayActivation = false
+                    showOverlayPermissionDeniedDialog = true
+                    if (!currentSettings.isFirstLaunchCompleted) {
+                        coroutineScope.launch {
+                            settingsRepository.saveFirstLaunchCompleted(true)
+                        }
+                    }
                 }
             }
 
@@ -182,11 +217,26 @@ class MainActivity : ComponentActivity() {
                             if (Settings.canDrawOverlays(context)) {
                                 if (isPendingOverlayActivation) {
                                     isPendingOverlayActivation = false
-                                    launchOverlayService()
+                                    showOverlayPermissionDeniedDialog = false
+                                    if (!currentSettings.isFirstLaunchCompleted) {
+                                        coroutineScope.launch {
+                                            settingsRepository.saveFirstLaunchCompleted(true)
+                                        }
+                                    }
+                                    launchOverlayServiceWithCheck()
                                 } else if (currentSettings.isOverlayEnabled && !SnowOverlayService.isRunning) {
                                     SnowOverlayService.start(context)
                                 }
                             } else {
+                                if (isPendingOverlayActivation) {
+                                    isPendingOverlayActivation = false
+                                    showOverlayPermissionDeniedDialog = true
+                                    if (!currentSettings.isFirstLaunchCompleted) {
+                                        coroutineScope.launch {
+                                            settingsRepository.saveFirstLaunchCompleted(true)
+                                        }
+                                    }
+                                }
                                 if (currentSettings.isOverlayEnabled) {
                                     coroutineScope.launch {
                                         settingsRepository.saveOverlayEnabled(false)
@@ -211,10 +261,9 @@ class MainActivity : ComponentActivity() {
             val toggleOverlay: (Boolean) -> Unit = { enabled ->
                 if (enabled) {
                     if (!Settings.canDrawOverlays(context)) {
-                        isPendingOverlayActivation = true
-                        showPermissionDialog = true
+                        showOverlayPermissionRationale = true
                     } else {
-                        launchOverlayService()
+                        launchOverlayServiceWithCheck()
                     }
                 } else {
                     isPendingOverlayActivation = false
@@ -291,42 +340,262 @@ class MainActivity : ComponentActivity() {
                     onDismiss = { isSettingsOpen = false }
                 )
 
-                // Диалог с просьбой предоставить разрешение SYSTEM_ALERT_WINDOW
-                if (showPermissionDialog) {
+                // 1. Диалог приветствия первого запуска (Onboarding)
+                if (showWelcomeDialog) {
                     AlertDialog(
                         onDismissRequest = {
-                            showPermissionDialog = false
-                            isPendingOverlayActivation = false
+                            showWelcomeDialog = false
+                            coroutineScope.launch {
+                                settingsRepository.saveFirstLaunchCompleted(true)
+                            }
                         },
-                        title = { Text("Отображение поверх других приложений") },
+                        icon = {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_snowflake_notification),
+                                contentDescription = null,
+                                tint = Color(0xFF93C5FD),
+                                modifier = Modifier.size(36.dp)
+                            )
+                        },
+                        title = {
+                            Text(
+                                text = "Добро пожаловать в Let It Snow! ❄️",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp
+                            )
+                        },
                         text = {
-                            Text("Чтобы снегопад отображался поверх других окон и создавал сугроб при разблокировке телефона, необходимо включить разрешение в настройках системы.")
+                            Text(
+                                text = "Приложение создаёт уютную зимнюю атмосферу снегопада прямо на вашем экране.\n\n" +
+                                        "Вы можете включить снегопад поверх всех приложений или любоваться им внутри окна приложения.",
+                                fontSize = 14.sp,
+                                lineHeight = 20.sp
+                            )
                         },
                         confirmButton = {
+                            Button(
+                                onClick = {
+                                    showWelcomeDialog = false
+                                    if (!Settings.canDrawOverlays(context)) {
+                                        showOverlayPermissionRationale = true
+                                    } else {
+                                        coroutineScope.launch {
+                                            settingsRepository.saveFirstLaunchCompleted(true)
+                                        }
+                                        launchOverlayServiceWithCheck()
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFF2563EB),
+                                    contentColor = Color.White
+                                ),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Включить поверх экрана ❄️", fontWeight = FontWeight.SemiBold)
+                            }
+                        },
+                        dismissButton = {
                             TextButton(
                                 onClick = {
-                                    showPermissionDialog = false
+                                    showWelcomeDialog = false
+                                    coroutineScope.launch {
+                                        settingsRepository.saveFirstLaunchCompleted(true)
+                                    }
+                                }
+                            ) {
+                                Text("Только в приложении", color = Color(0xFF94A3B8))
+                            }
+                        },
+                        containerColor = Color(0xF20B132B),
+                        shape = RoundedCornerShape(20.dp)
+                    )
+                }
+
+                // 2. Диалог с объяснением необходимости разрешения SYSTEM_ALERT_WINDOW перед переходом в настройки
+                if (showOverlayPermissionRationale) {
+                    AlertDialog(
+                        onDismissRequest = {
+                            showOverlayPermissionRationale = false
+                            isPendingOverlayActivation = false
+                            if (!currentSettings.isFirstLaunchCompleted) {
+                                coroutineScope.launch {
+                                    settingsRepository.saveFirstLaunchCompleted(true)
+                                }
+                            }
+                        },
+                        icon = {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_settings),
+                                contentDescription = null,
+                                tint = Color(0xFF93C5FD),
+                                modifier = Modifier.size(32.dp)
+                            )
+                        },
+                        title = {
+                            Text(
+                                text = "Отображение поверх других окон",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp
+                            )
+                        },
+                        text = {
+                            Text(
+                                text = "Чтобы снежинки кружились на рабочем столе и поверх других приложений, требуется системное разрешение.\n\n" +
+                                        "В открывшихся настройках системы найдите «Let It Snow» и переведите переключатель в активное положение.",
+                                fontSize = 14.sp,
+                                lineHeight = 20.sp
+                            )
+                        },
+                        confirmButton = {
+                            Button(
+                                onClick = {
+                                    showOverlayPermissionRationale = false
                                     isPendingOverlayActivation = true
                                     val intent = Intent(
                                         Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                                         Uri.parse("package:${context.packageName}")
                                     )
                                     overlayPermissionLauncher.launch(intent)
-                                }
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFF2563EB),
+                                    contentColor = Color.White
+                                ),
+                                shape = RoundedCornerShape(12.dp)
                             ) {
-                                Text("Настройки")
+                                Text("Перейти в настройки", fontWeight = FontWeight.SemiBold)
                             }
                         },
                         dismissButton = {
                             TextButton(
                                 onClick = {
-                                    showPermissionDialog = false
+                                    showOverlayPermissionRationale = false
                                     isPendingOverlayActivation = false
+                                    if (!currentSettings.isFirstLaunchCompleted) {
+                                        coroutineScope.launch {
+                                            settingsRepository.saveFirstLaunchCompleted(true)
+                                        }
+                                    }
                                 }
                             ) {
-                                Text("Отмена")
+                                Text("Отмена", color = Color(0xFF94A3B8))
                             }
-                        }
+                        },
+                        containerColor = Color(0xF20B132B),
+                        shape = RoundedCornerShape(20.dp)
+                    )
+                }
+
+                // 3. Понятное объяснение в случае отказа в разрешении оверлея
+                if (showOverlayPermissionDeniedDialog) {
+                    AlertDialog(
+                        onDismissRequest = {
+                            showOverlayPermissionDeniedDialog = false
+                        },
+                        title = {
+                            Text(
+                                text = "Разрешение не предоставлено",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp
+                            )
+                        },
+                        text = {
+                            Text(
+                                text = "Без этого разрешения отображение поверх окон недоступно. Снегопад продолжит радовать вас внутри приложения.\n\n" +
+                                        "Вы всегда можете включить снегопад поверх экрана позже в меню настроек.",
+                                fontSize = 14.sp,
+                                lineHeight = 20.sp
+                            )
+                        },
+                        confirmButton = {
+                            Button(
+                                onClick = {
+                                    showOverlayPermissionDeniedDialog = false
+                                    showOverlayPermissionRationale = true
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFF2563EB),
+                                    contentColor = Color.White
+                                ),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Попробовать снова", fontWeight = FontWeight.SemiBold)
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(
+                                onClick = {
+                                    showOverlayPermissionDeniedDialog = false
+                                }
+                            ) {
+                                Text("Понятно", color = Color(0xFF94A3B8))
+                            }
+                        },
+                        containerColor = Color(0xF20B132B),
+                        shape = RoundedCornerShape(20.dp)
+                    )
+                }
+
+                // 4. Пояснение перед запросом разрешения на показ уведомлений (Android 13+)
+                if (showNotificationRationale) {
+                    AlertDialog(
+                        onDismissRequest = {
+                            showNotificationRationale = false
+                            launchOverlayServiceDirectly()
+                        },
+                        icon = {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_snowflake_notification),
+                                contentDescription = null,
+                                tint = Color(0xFF93C5FD),
+                                modifier = Modifier.size(32.dp)
+                            )
+                        },
+                        title = {
+                            Text(
+                                text = "Уведомление службы",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp
+                            )
+                        },
+                        text = {
+                            Text(
+                                text = "Разрешите уведомления, чтобы видеть статус снегопада и быстро останавливать его прямо из шторки уведомлений.",
+                                fontSize = 14.sp,
+                                lineHeight = 20.sp
+                            )
+                        },
+                        confirmButton = {
+                            Button(
+                                onClick = {
+                                    showNotificationRationale = false
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    } else {
+                                        launchOverlayServiceDirectly()
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFF2563EB),
+                                    contentColor = Color.White
+                                ),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Продолжить", fontWeight = FontWeight.SemiBold)
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(
+                                onClick = {
+                                    showNotificationRationale = false
+                                    launchOverlayServiceDirectly()
+                                }
+                            ) {
+                                Text("Не сейчас", color = Color(0xFF94A3B8))
+                            }
+                        },
+                        containerColor = Color(0xF20B132B),
+                        shape = RoundedCornerShape(20.dp)
                     )
                 }
             }
