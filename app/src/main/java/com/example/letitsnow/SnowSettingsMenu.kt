@@ -1,8 +1,10 @@
 package com.example.letitsnow
 
 import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
@@ -46,6 +48,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -126,13 +129,17 @@ fun SnowSettingsMenu(
     val activeBgColor = if (isScarlet) Color(0xFFDC2626) else Color(0xFF2563EB)
     val cardBorderColor = if (isScarlet) Color(0x44EF4444) else Color(0x3360A5FA)
 
-    // Определение текущего установленного языка через AppCompatDelegate
-    val currentAppLocales = AppCompatDelegate.getApplicationLocales()
-    val currentLanguageTag = if (currentAppLocales.isEmpty) {
-        ""
-    } else {
-        currentAppLocales[0]?.language ?: ""
+    // Функция считывания текущего выбранного языка приложения
+    fun getCurrentLanguageTag(): String {
+        val appCompatLocales = AppCompatDelegate.getApplicationLocales()
+        return if (!appCompatLocales.isEmpty) {
+            appCompatLocales[0]?.language ?: ""
+        } else {
+            ""
+        }
     }
+
+    var currentLanguageTag by remember { mutableStateOf(getCurrentLanguageTag()) }
 
     Box(
         modifier = Modifier
@@ -618,12 +625,15 @@ fun SnowSettingsMenu(
                                         .background(btnBg, RoundedCornerShape(10.dp))
                                         .border(1.dp, btnBorder, RoundedCornerShape(10.dp))
                                         .clickable {
-                                            val locales = if (tag.isEmpty()) {
-                                                LocaleListCompat.getEmptyLocaleList()
-                                            } else {
-                                                LocaleListCompat.forLanguageTags(tag)
+                                            if (tag != currentLanguageTag) {
+                                                currentLanguageTag = tag
+                                                val locales = if (tag.isEmpty()) {
+                                                    LocaleListCompat.getEmptyLocaleList()
+                                                } else {
+                                                    LocaleListCompat.forLanguageTags(tag)
+                                                }
+                                                AppCompatDelegate.setApplicationLocales(locales)
                                             }
-                                            AppCompatDelegate.setApplicationLocales(locales)
                                         }
                                         .padding(vertical = 10.dp),
                                     contentAlignment = Alignment.Center

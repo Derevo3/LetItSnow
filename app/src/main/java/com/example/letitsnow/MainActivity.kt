@@ -17,6 +17,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -41,6 +42,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,7 +60,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
 
     private lateinit var settingsRepository: SnowSettingsRepository
 
@@ -121,16 +123,16 @@ class MainActivity : ComponentActivity() {
                 } else null
             }
 
-            // Состояние открытия меню настроек
-            var isSettingsOpen by remember { mutableStateOf(false) }
+            // Состояние открытия меню настроек (сохраняется при смене языка и повороте экрана)
+            var isSettingsOpen by rememberSaveable { mutableStateOf(false) }
 
             // Диалоги онбординга и последовательного запроса разрешений
-            var showWelcomeDialog by remember { mutableStateOf(false) }
-            var showOverlayPermissionRationale by remember { mutableStateOf(false) }
-            var showOverlayPermissionDeniedDialog by remember { mutableStateOf(false) }
-            var showNotificationRationale by remember { mutableStateOf(false) }
-            var isPendingOverlayActivation by remember { mutableStateOf(false) }
-            var hasCheckedFirstLaunch by remember { mutableStateOf(false) }
+            var showWelcomeDialog by rememberSaveable { mutableStateOf(false) }
+            var showOverlayPermissionRationale by rememberSaveable { mutableStateOf(false) }
+            var showOverlayPermissionDeniedDialog by rememberSaveable { mutableStateOf(false) }
+            var showNotificationRationale by rememberSaveable { mutableStateOf(false) }
+            var isPendingOverlayActivation by rememberSaveable { mutableStateOf(false) }
+            var hasCheckedFirstLaunch by rememberSaveable { mutableStateOf(false) }
 
             // Показываем приветствие один раз при первом открытии приложения только ПОСЛЕ
             // фактического чтения актуального состояния из DataStore Preferences

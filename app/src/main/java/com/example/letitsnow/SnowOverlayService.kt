@@ -293,13 +293,13 @@ class SnowOverlayService : Service() {
         )
 
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setContentTitle(getString(R.string.notification_title))
-            .setContentText(getString(R.string.notification_text))
+            .setContentTitle(ContextCompat.getString(this, R.string.notification_title))
+            .setContentText(ContextCompat.getString(this, R.string.notification_text))
             .setSmallIcon(R.drawable.ic_snowflake_notification)
             .setContentIntent(mainPendingIntent)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
-            .addAction(0, getString(R.string.notification_action_stop), stopPendingIntent)
+            .addAction(0, ContextCompat.getString(this, R.string.notification_action_stop), stopPendingIntent)
             .build()
     }
 
@@ -307,10 +307,10 @@ class SnowOverlayService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 NOTIFICATION_CHANNEL_ID,
-                getString(R.string.notification_channel_name),
+                ContextCompat.getString(this, R.string.notification_channel_name),
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = getString(R.string.notification_channel_description)
+                description = ContextCompat.getString(this@SnowOverlayService, R.string.notification_channel_description)
                 setShowBadge(false)
             }
             val notificationManager = getSystemService(NotificationManager::class.java)
@@ -351,6 +351,8 @@ class SnowOverlayService : Service() {
                 windowManager.updateViewLayout(snowView, layoutParams)
                 snowView.updateCanvasSize(realW.toFloat(), realH.toFloat())
             }
+            val notificationManager = getSystemService(NotificationManager::class.java)
+            notificationManager?.notify(NOTIFICATION_ID, buildNotification())
         } catch (_: Exception) { }
     }
 
