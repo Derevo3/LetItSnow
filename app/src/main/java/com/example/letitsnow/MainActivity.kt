@@ -47,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -54,6 +55,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -68,8 +70,8 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val context = LocalContext.current
+            val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
             val coroutineScope = rememberCoroutineScope()
-            val lifecycleOwner = this@MainActivity
 
             // Загрузка сохраненных настроек из DataStore
             val currentSettings by settingsRepository.settingsFlow.collectAsState(
@@ -79,7 +81,7 @@ class MainActivity : ComponentActivity() {
             // Создаем и запоминаем SnowView для отображения внутри приложения
             val snowView = remember {
                 SnowView(context).apply {
-                    applySettings(currentSettings)
+                    isOverlayMode = false
                 }
             }
 
@@ -89,50 +91,56 @@ class MainActivity : ComponentActivity() {
             }
 
             // Детектор встряхивания и вибрация для очистки снега потрясыванием
-            val sensorManager = remember {
-                context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
-            }
             val vibrator = remember {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
-                    vibratorManager?.defaultVibrator
+                    val vm = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
+                    vm?.defaultVibrator
                 } else {
                     @Suppress("DEPRECATION")
                     context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
                 }
             }
-            val shakeDetector = remember(snowView) {
-                sensorManager?.let { sm ->
+
+            val shakeDetector = remember {
+                val sm = context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
+                if (sm != null) {
                     ShakeDetector(sm) {
                         snowView.accumulation.clearAllSnow()
                         snowView.invalidate()
-                        vibrator?.let { v ->
+                        if (vibrator?.hasVibrator() == true) {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                                v.vibrate(VibrationEffect.createOneShot(120, VibrationEffect.DEFAULT_AMPLITUDE))
+                                vibrator.vibrate(
+                                    VibrationEffect.createOneShot(120, VibrationEffect.DEFAULT_AMPLITUDE)
+                                )
                             } else {
                                 @Suppress("DEPRECATION")
-                                v.vibrate(120)
+                                vibrator.vibrate(120)
                             }
                         }
                     }
-                }
+                } else null
             }
 
+            // Состояние открытия меню настроек
             var isSettingsOpen by remember { mutableStateOf(false) }
-            var isPendingOverlayActivation by remember { mutableStateOf(false) }
 
             // Диалоги онбординга и последовательного запроса разрешений
             var showWelcomeDialog by remember { mutableStateOf(false) }
-            var hasCheckedFirstLaunch by remember { mutableStateOf(false) }
             var showOverlayPermissionRationale by remember { mutableStateOf(false) }
             var showOverlayPermissionDeniedDialog by remember { mutableStateOf(false) }
             var showNotificationRationale by remember { mutableStateOf(false) }
+            var isPendingOverlayActivation by remember { mutableStateOf(false) }
+            var hasCheckedFirstLaunch by remember { mutableStateOf(false) }
 
-            // Показываем приветствие один раз при первом открытии приложения
-            LaunchedEffect(currentSettings.isFirstLaunchCompleted) {
-                if (!currentSettings.isFirstLaunchCompleted && !hasCheckedFirstLaunch) {
+            // Показываем приветствие один раз при первом открытии приложения только ПОСЛЕ
+            // фактического чтения актуального состояния из DataStore Preferences
+            LaunchedEffect(Unit) {
+                if (!hasCheckedFirstLaunch) {
                     hasCheckedFirstLaunch = true
-                    showWelcomeDialog = true
+                    val loadedSettings = settingsRepository.settingsFlow.first()
+                    if (!loadedSettings.isFirstLaunchCompleted) {
+                        showWelcomeDialog = true
+                    }
                 }
             }
 
@@ -299,7 +307,7 @@ class MainActivity : ComponentActivity() {
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_power),
-                            contentDescription = "Выключить снег и выйти",
+                            contentDescription = stringResource(R.string.cd_exit_app),
                             tint = Color.White
                         )
                     }
@@ -313,7 +321,7 @@ class MainActivity : ComponentActivity() {
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_settings),
-                            contentDescription = "Настройки снега",
+                            contentDescription = stringResource(R.string.cd_open_settings),
                             tint = Color.White
                         )
                     }
@@ -359,15 +367,14 @@ class MainActivity : ComponentActivity() {
                         },
                         title = {
                             Text(
-                                text = "Добро пожаловать в Let It Snow! ❄️",
+                                text = stringResource(R.string.dialog_welcome_title),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 18.sp
                             )
                         },
                         text = {
                             Text(
-                                text = "Приложение создаёт уютную зимнюю атмосферу снегопада прямо на вашем экране.\n\n" +
-                                        "Вы можете включить снегопад поверх всех приложений или любоваться им внутри окна приложения.",
+                                text = stringResource(R.string.dialog_welcome_text),
                                 fontSize = 14.sp,
                                 lineHeight = 20.sp
                             )
@@ -376,12 +383,12 @@ class MainActivity : ComponentActivity() {
                             Button(
                                 onClick = {
                                     showWelcomeDialog = false
+                                    coroutineScope.launch {
+                                        settingsRepository.saveFirstLaunchCompleted(true)
+                                    }
                                     if (!Settings.canDrawOverlays(context)) {
                                         showOverlayPermissionRationale = true
                                     } else {
-                                        coroutineScope.launch {
-                                            settingsRepository.saveFirstLaunchCompleted(true)
-                                        }
                                         launchOverlayServiceWithCheck()
                                     }
                                 },
@@ -391,7 +398,7 @@ class MainActivity : ComponentActivity() {
                                 ),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
-                                Text("Включить поверх экрана ❄️", fontWeight = FontWeight.SemiBold)
+                                Text(stringResource(R.string.dialog_welcome_btn_overlay), fontWeight = FontWeight.SemiBold)
                             }
                         },
                         dismissButton = {
@@ -403,7 +410,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             ) {
-                                Text("Только в приложении", color = Color(0xFF94A3B8))
+                                Text(stringResource(R.string.dialog_welcome_btn_in_app), color = Color(0xFF94A3B8))
                             }
                         },
                         containerColor = Color(0xF20B132B),
@@ -433,15 +440,14 @@ class MainActivity : ComponentActivity() {
                         },
                         title = {
                             Text(
-                                text = "Отображение поверх других окон",
+                                text = stringResource(R.string.dialog_overlay_rationale_title),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 18.sp
                             )
                         },
                         text = {
                             Text(
-                                text = "Чтобы снежинки кружились на рабочем столе и поверх других приложений, требуется системное разрешение.\n\n" +
-                                        "В открывшихся настройках системы найдите «Let It Snow» и переведите переключатель в активное положение.",
+                                text = stringResource(R.string.dialog_overlay_rationale_text),
                                 fontSize = 14.sp,
                                 lineHeight = 20.sp
                             )
@@ -463,7 +469,7 @@ class MainActivity : ComponentActivity() {
                                 ),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
-                                Text("Перейти в настройки", fontWeight = FontWeight.SemiBold)
+                                Text(stringResource(R.string.dialog_overlay_rationale_btn_settings), fontWeight = FontWeight.SemiBold)
                             }
                         },
                         dismissButton = {
@@ -478,7 +484,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             ) {
-                                Text("Отмена", color = Color(0xFF94A3B8))
+                                Text(stringResource(R.string.dialog_overlay_rationale_btn_cancel), color = Color(0xFF94A3B8))
                             }
                         },
                         containerColor = Color(0xF20B132B),
@@ -494,15 +500,14 @@ class MainActivity : ComponentActivity() {
                         },
                         title = {
                             Text(
-                                text = "Разрешение не предоставлено",
+                                text = stringResource(R.string.dialog_overlay_denied_title),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 18.sp
                             )
                         },
                         text = {
                             Text(
-                                text = "Без этого разрешения отображение поверх окон недоступно. Снегопад продолжит радовать вас внутри приложения.\n\n" +
-                                        "Вы всегда можете включить снегопад поверх экрана позже в меню настроек.",
+                                text = stringResource(R.string.dialog_overlay_denied_text),
                                 fontSize = 14.sp,
                                 lineHeight = 20.sp
                             )
@@ -519,7 +524,7 @@ class MainActivity : ComponentActivity() {
                                 ),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
-                                Text("Попробовать снова", fontWeight = FontWeight.SemiBold)
+                                Text(stringResource(R.string.dialog_overlay_denied_btn_retry), fontWeight = FontWeight.SemiBold)
                             }
                         },
                         dismissButton = {
@@ -528,7 +533,7 @@ class MainActivity : ComponentActivity() {
                                     showOverlayPermissionDeniedDialog = false
                                 }
                             ) {
-                                Text("Понятно", color = Color(0xFF94A3B8))
+                                Text(stringResource(R.string.dialog_overlay_denied_btn_ok), color = Color(0xFF94A3B8))
                             }
                         },
                         containerColor = Color(0xF20B132B),
@@ -553,14 +558,14 @@ class MainActivity : ComponentActivity() {
                         },
                         title = {
                             Text(
-                                text = "Уведомление службы",
+                                text = stringResource(R.string.dialog_notification_rationale_title),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 18.sp
                             )
                         },
                         text = {
                             Text(
-                                text = "Разрешите уведомления, чтобы видеть статус снегопада и быстро останавливать его прямо из шторки уведомлений.",
+                                text = stringResource(R.string.dialog_notification_rationale_text),
                                 fontSize = 14.sp,
                                 lineHeight = 20.sp
                             )
@@ -581,7 +586,7 @@ class MainActivity : ComponentActivity() {
                                 ),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
-                                Text("Продолжить", fontWeight = FontWeight.SemiBold)
+                                Text(stringResource(R.string.dialog_notification_rationale_btn_continue), fontWeight = FontWeight.SemiBold)
                             }
                         },
                         dismissButton = {
@@ -591,7 +596,7 @@ class MainActivity : ComponentActivity() {
                                     launchOverlayServiceDirectly()
                                 }
                             ) {
-                                Text("Не сейчас", color = Color(0xFF94A3B8))
+                                Text(stringResource(R.string.dialog_notification_rationale_btn_not_now), color = Color(0xFF94A3B8))
                             }
                         },
                         containerColor = Color(0xF20B132B),

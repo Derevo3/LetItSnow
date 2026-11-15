@@ -1,0 +1,87 @@
+<resources>
+    <!-- App Name -->
+    <string name="app_name">Let it Snow</string>
+
+    <!-- Main Screen & Common Actions -->
+    <string name="cd_exit_app">Turn off snow and exit</string>
+    <string name="cd_open_settings">Snow settings</string>
+    <string name="btn_exit_app">Turn off snow and exit</string>
+    <string name="btn_close_settings">Close settings</string>
+    <string name="btn_support_developer">Support developer ❤️</string>
+    <string name="error_no_browser">Could not find a web browser to open the link</string>
+    <string name="error_open_link">Could not open link: %s</string>
+    <string name="error_unknown">unknown error</string>
+
+    <!-- Foreground Service & Notification -->
+    <string name="notification_title">SnowOverlay is active</string>
+    <string name="notification_text">Falling snow over all apps</string>
+    <string name="notification_action_stop">Stop</string>
+    <string name="notification_channel_name">Snow overlay</string>
+    <string name="notification_channel_description">Ongoing notification for snow overlay running over all apps</string>
+
+    <!-- Dialog 1: Welcome / Onboarding -->
+    <string name="dialog_welcome_title">Welcome to Let It Snow! ❄️</string>
+    <string name="dialog_welcome_text">The app brings a cozy winter snowfall right onto your screen.\n\nYou can enable falling snow over all apps or enjoy it inside the app window.</string>
+    <string name="dialog_welcome_btn_overlay">Show over screen ❄️</string>
+    <string name="dialog_welcome_btn_in_app">Only in app</string>
+
+    <!-- Dialog 2: Overlay Permission Rationale -->
+    <string name="dialog_overlay_rationale_title">Display over other apps</string>
+    <string name="dialog_overlay_rationale_text">To let snowflakes swirl across your home screen and over other apps, a system permission is required.\n\nIn the system settings that open, find “Let It Snow” and toggle the switch on.</string>
+    <string name="dialog_overlay_rationale_btn_settings">Open settings</string>
+    <string name="dialog_overlay_rationale_btn_cancel">Cancel</string>
+
+    <!-- Dialog 3: Overlay Permission Denied -->
+    <string name="dialog_overlay_denied_title">Permission not granted</string>
+    <string name="dialog_overlay_denied_text">Without this permission, display over other apps is unavailable. Snowfall will continue to delight you inside the app.\n\nYou can always enable the overlay later in the settings menu.</string>
+    <string name="dialog_overlay_denied_btn_retry">Try again</string>
+    <string name="dialog_overlay_denied_btn_ok">Got it</string>
+
+    <!-- Dialog 4: Notification Permission Rationale -->
+    <string name="dialog_notification_rationale_title">Service notification</string>
+    <string name="dialog_notification_rationale_text">Allow notifications to see the snowfall status and quickly stop it right from the notification shade.</string>
+    <string name="dialog_notification_rationale_btn_continue">Continue</string>
+    <string name="dialog_notification_rationale_btn_not_now">Not now</string>
+
+    <!-- Settings Menu - Titles & Headers -->
+    <string name="settings_title">Snow settings</string>
+    <string name="settings_color_label">Color</string>
+    <string name="settings_style_label">Snowflake style</string>
+    <string name="settings_glow_label">Glow</string>
+    <string name="settings_glow_description">Gentle magical glow around snowflakes</string>
+    <string name="settings_snowbank_style_label">Snowbank style</string>
+    <string name="settings_snowflake_size_label">Snowflake size</string>
+    <string name="settings_fall_speed_label">Fall speed</string>
+    <string name="settings_intensity_label">Snowflake count</string>
+    <string name="settings_snowbank_height_label">Snowbank height</string>
+    <string name="settings_overlay_label">Display over other apps</string>
+    <string name="settings_overlay_description">Falling snow on home screen and over other apps</string>
+
+    <!-- Settings Menu - Language Selection -->
+    <string name="settings_language_label">App language</string>
+    <string name="settings_language_system">System default</string>
+    <string name="settings_language_russian">Русский</string>
+    <string name="settings_language_english">English</string>
+
+    <!-- Snow Color Themes -->
+    <string name="color_theme_white_title">White</string>
+    <string name="color_theme_white_desc">Classic pure white and blue winter snow</string>
+    <string name="color_theme_scarlet_title">Scarlet</string>
+    <string name="color_theme_scarlet_desc">Mystical scarlet snowfall and crimson drifts</string>
+
+    <!-- Snowflake Styles -->
+    <string name="snowflake_style_fairytale_title">Fairytale</string>
+    <string name="snowflake_style_fairytale_desc">90% micro-flakes (1-3 dp), 8% fluffy flakes and 2% delicate crystals</string>
+    <string name="snowflake_style_fluffy_title">Fluffy</string>
+    <string name="snowflake_style_fluffy_desc">Soft fluffy winter flakes</string>
+
+    <!-- Snowbank Styles -->
+    <string name="snowbank_style_smooth_hills_title">Smooth hills</string>
+    <string name="snowbank_style_smooth_hills_desc">Silky natural dunes with soft winter shadows</string>
+    <string name="snowbank_style_puffy_clouds_title">Puffy</string>
+    <string name="snowbank_style_puffy_clouds_desc">Soft lush caps of freshly fallen snow</string>
+    <string name="snowbank_style_icy_shelf_title">Icy</string>
+    <string name="snowbank_style_icy_shelf_desc">Crystalline sparkling edge with layered backlight</string>
+    <string name="snowbank_style_classic_title">Classic</string>
+    <string name="snowbank_style_classic_desc">Detailed smoothed snowbank with a soft winter gradient</string>
+</resources>

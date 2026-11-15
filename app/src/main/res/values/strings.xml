@@ -1,3 +1,87 @@
 <resources>
+    <!-- App Name -->
     <string name="app_name">Let it Snow</string>
+
+    <!-- Main Screen & Common Actions -->
+    <string name="cd_exit_app">Выключить снег и выйти</string>
+    <string name="cd_open_settings">Настройки снега</string>
+    <string name="btn_exit_app">Выключить снег и выйти</string>
+    <string name="btn_close_settings">Закрыть настройки</string>
+    <string name="btn_support_developer">Поддержать разработчика ❤️</string>
+    <string name="error_no_browser">Не удалось найти браузер для открытия ссылки</string>
+    <string name="error_open_link">Не удалось открыть ссылку: %s</string>
+    <string name="error_unknown">неизвестная ошибка</string>
+
+    <!-- Foreground Service & Notification -->
+    <string name="notification_title">SnowOverlay активен</string>
+    <string name="notification_text">Снегопад поверх всех приложений</string>
+    <string name="notification_action_stop">Остановить</string>
+    <string name="notification_channel_name">Снегопад поверх приложений</string>
+    <string name="notification_channel_description">Постоянное уведомление о работе снегопада поверх всех окон</string>
+
+    <!-- Dialog 1: Welcome / Onboarding -->
+    <string name="dialog_welcome_title">Добро пожаловать в Let It Snow! ❄️</string>
+    <string name="dialog_welcome_text">Приложение создаёт уютную зимнюю атмосферу снегопада прямо на вашем экране.\n\nВы можете включить снегопад поверх всех приложений или любоваться им внутри окна приложения.</string>
+    <string name="dialog_welcome_btn_overlay">Включить поверх экрана ❄️</string>
+    <string name="dialog_welcome_btn_in_app">Только в приложении</string>
+
+    <!-- Dialog 2: Overlay Permission Rationale -->
+    <string name="dialog_overlay_rationale_title">Отображение поверх других окон</string>
+    <string name="dialog_overlay_rationale_text">Чтобы снежинки кружились на рабочем столе и поверх других приложений, требуется системное разрешение.\n\nВ открывшихся настройках системы найдите «Let It Snow» и переведите переключатель в активное положение.</string>
+    <string name="dialog_overlay_rationale_btn_settings">Перейти в настройки</string>
+    <string name="dialog_overlay_rationale_btn_cancel">Отмена</string>
+
+    <!-- Dialog 3: Overlay Permission Denied -->
+    <string name="dialog_overlay_denied_title">Разрешение не предоставлено</string>
+    <string name="dialog_overlay_denied_text">Без этого разрешения отображение поверх окон недоступно. Снегопад продолжит радовать вас внутри приложения.\n\nВы всегда можете включить снегопад поверх экрана позже в меню настроек.</string>
+    <string name="dialog_overlay_denied_btn_retry">Попробовать снова</string>
+    <string name="dialog_overlay_denied_btn_ok">Понятно</string>
+
+    <!-- Dialog 4: Notification Permission Rationale -->
+    <string name="dialog_notification_rationale_title">Уведомление службы</string>
+    <string name="dialog_notification_rationale_text">Разрешите уведомления, чтобы видеть статус снегопада и быстро останавливать его прямо из шторки уведомлений.</string>
+    <string name="dialog_notification_rationale_btn_continue">Продолжить</string>
+    <string name="dialog_notification_rationale_btn_not_now">Не сейчас</string>
+
+    <!-- Settings Menu - Titles & Headers -->
+    <string name="settings_title">Настройки снега</string>
+    <string name="settings_color_label">Цвет</string>
+    <string name="settings_style_label">Стиль снежинок</string>
+    <string name="settings_glow_label">Сияние</string>
+    <string name="settings_glow_description">Нежное сказочное свечение вокруг снежинок</string>
+    <string name="settings_snowbank_style_label">Стиль сугроба</string>
+    <string name="settings_snowflake_size_label">Размер снежинок</string>
+    <string name="settings_fall_speed_label">Скорость снегопада</string>
+    <string name="settings_intensity_label">Количество снежинок</string>
+    <string name="settings_snowbank_height_label">Высота сугроба</string>
+    <string name="settings_overlay_label">Поверх всех приложений</string>
+    <string name="settings_overlay_description">Падающий снег на рабочем столе и поверх других приложений</string>
+
+    <!-- Settings Menu - Language Selection -->
+    <string name="settings_language_label">Язык приложения</string>
+    <string name="settings_language_system">Как на устройстве</string>
+    <string name="settings_language_russian">Русский</string>
+    <string name="settings_language_english">English</string>
+
+    <!-- Snow Color Themes -->
+    <string name="color_theme_white_title">Белый</string>
+    <string name="color_theme_white_desc">Классический чистый бело-голубой зимний снег</string>
+    <string name="color_theme_scarlet_title">Алый</string>
+    <string name="color_theme_scarlet_desc">Мистический алый снегопад и кроваво-красные сугробы</string>
+
+    <!-- Snowflake Styles -->
+    <string name="snowflake_style_fairytale_title">Сказочный</string>
+    <string name="snowflake_style_fairytale_desc">90% микро-снежинок (1-3 dp), 8% хлопьев и 2% изящных кристаллов</string>
+    <string name="snowflake_style_fluffy_title">Хлопья</string>
+    <string name="snowflake_style_fluffy_desc">Мягкие пушистые зимние хлопья</string>
+
+    <!-- Snowbank Styles -->
+    <string name="snowbank_style_smooth_hills_title">Плавные холмы</string>
+    <string name="snowbank_style_smooth_hills_desc">Шелковистые природные дюны с мягкими зимними тенями</string>
+    <string name="snowbank_style_puffy_clouds_title">Пушистый</string>
+    <string name="snowbank_style_puffy_clouds_desc">Мягкие пышные шапки только что выпавшего снега</string>
+    <string name="snowbank_style_icy_shelf_title">Ледяной</string>
+    <string name="snowbank_style_icy_shelf_desc">Кристальная искрящаяся кромка со слоистой подсветкой</string>
+    <string name="snowbank_style_classic_title">Классика</string>
+    <string name="snowbank_style_classic_desc">Детализированный сглаженный сугроб с мягким зимним градиентом</string>
 </resources>

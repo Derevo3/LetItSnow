@@ -4,6 +4,8 @@ import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -51,6 +53,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -83,13 +86,16 @@ fun SnowSettingsMenu(
         } catch (_: ActivityNotFoundException) {
             Toast.makeText(
                 context,
-                "Не удалось найти браузер для открытия ссылки",
+                context.getString(R.string.error_no_browser),
                 Toast.LENGTH_LONG
             ).show()
         } catch (e: Exception) {
             Toast.makeText(
                 context,
-                "Не удалось открыть ссылку: ${e.localizedMessage ?: "неизвестная ошибка"}",
+                context.getString(
+                    R.string.error_open_link,
+                    e.localizedMessage ?: context.getString(R.string.error_unknown)
+                ),
                 Toast.LENGTH_LONG
             ).show()
         }
@@ -119,6 +125,14 @@ fun SnowSettingsMenu(
     val activeTrackColor = if (isScarlet) Color(0xFFEF4444) else Color(0xFF3B82F6)
     val activeBgColor = if (isScarlet) Color(0xFFDC2626) else Color(0xFF2563EB)
     val cardBorderColor = if (isScarlet) Color(0x44EF4444) else Color(0x3360A5FA)
+
+    // Определение текущего установленного языка через AppCompatDelegate
+    val currentAppLocales = AppCompatDelegate.getApplicationLocales()
+    val currentLanguageTag = if (currentAppLocales.isEmpty) {
+        ""
+    } else {
+        currentAppLocales[0]?.language ?: ""
+    }
 
     Box(
         modifier = Modifier
@@ -163,7 +177,7 @@ fun SnowSettingsMenu(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Настройки снега",
+                            text = stringResource(R.string.settings_title),
                             color = Color.White,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold
@@ -177,13 +191,13 @@ fun SnowSettingsMenu(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "Цвет",
+                                text = stringResource(R.string.settings_color_label),
                                 color = Color(0xFFE2E8F0),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                text = settings.colorTheme.title,
+                                text = stringResource(settings.colorTheme.titleRes),
                                 color = primaryAccent,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold
@@ -218,7 +232,7 @@ fun SnowSettingsMenu(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = theme.title,
+                                        text = stringResource(theme.titleRes),
                                         color = if (isSelected) Color.White else Color(0xFFCBD5E1),
                                         fontSize = 13.sp,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
@@ -229,7 +243,7 @@ fun SnowSettingsMenu(
                         }
 
                         Text(
-                            text = settings.colorTheme.description,
+                            text = stringResource(settings.colorTheme.descriptionRes),
                             color = Color(0xFF94A3B8),
                             fontSize = 12.sp
                         )
@@ -242,13 +256,13 @@ fun SnowSettingsMenu(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "Стиль снежинок",
+                                text = stringResource(R.string.settings_style_label),
                                 color = Color(0xFFE2E8F0),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                text = settings.snowflakeStyle.title,
+                                text = stringResource(settings.snowflakeStyle.titleRes),
                                 color = primaryAccent,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold
@@ -278,7 +292,7 @@ fun SnowSettingsMenu(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = style.title,
+                                        text = stringResource(style.titleRes),
                                         color = if (isSelected) Color.White else Color(0xFFCBD5E1),
                                         fontSize = 13.sp,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
@@ -289,7 +303,7 @@ fun SnowSettingsMenu(
                         }
 
                         Text(
-                            text = settings.snowflakeStyle.description,
+                            text = stringResource(settings.snowflakeStyle.descriptionRes),
                             color = Color(0xFF94A3B8),
                             fontSize = 12.sp
                         )
@@ -306,13 +320,13 @@ fun SnowSettingsMenu(
                     ) {
                         Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
                             Text(
-                                text = "Сияние",
+                                text = stringResource(R.string.settings_glow_label),
                                 color = Color.White,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                text = "Нежное сказочное свечение вокруг снежинок",
+                                text = stringResource(R.string.settings_glow_description),
                                 color = Color(0xFF94A3B8),
                                 fontSize = 12.sp
                             )
@@ -340,13 +354,13 @@ fun SnowSettingsMenu(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "Стиль сугроба",
+                                text = stringResource(R.string.settings_snowbank_style_label),
                                 color = Color(0xFFE2E8F0),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                text = settings.snowbankStyle.title,
+                                text = stringResource(settings.snowbankStyle.titleRes),
                                 color = primaryAccent,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold
@@ -376,7 +390,7 @@ fun SnowSettingsMenu(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = style.title,
+                                        text = stringResource(style.titleRes),
                                         color = if (isSelected) Color.White else Color(0xFFCBD5E1),
                                         fontSize = 12.sp,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
@@ -387,7 +401,7 @@ fun SnowSettingsMenu(
                         }
 
                         Text(
-                            text = settings.snowbankStyle.description,
+                            text = stringResource(settings.snowbankStyle.descriptionRes),
                             color = Color(0xFF94A3B8),
                             fontSize = 12.sp
                         )
@@ -400,7 +414,7 @@ fun SnowSettingsMenu(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "Размер снежинок",
+                                text = stringResource(R.string.settings_snowflake_size_label),
                                 color = Color(0xFFE2E8F0),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium
@@ -437,7 +451,7 @@ fun SnowSettingsMenu(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "Скорость снегопада",
+                                text = stringResource(R.string.settings_fall_speed_label),
                                 color = Color(0xFFE2E8F0),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium
@@ -474,7 +488,7 @@ fun SnowSettingsMenu(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "Количество снежинок",
+                                text = stringResource(R.string.settings_intensity_label),
                                 color = Color(0xFFE2E8F0),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium
@@ -511,7 +525,7 @@ fun SnowSettingsMenu(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "Высота сугроба",
+                                text = stringResource(R.string.settings_snowbank_height_label),
                                 color = Color(0xFFE2E8F0),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium
@@ -552,13 +566,13 @@ fun SnowSettingsMenu(
                     ) {
                         Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
                             Text(
-                                text = "Поверх всех приложений",
+                                text = stringResource(R.string.settings_overlay_label),
                                 color = Color.White,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                text = "Падающий снег на рабочем столе и поверх других приложений",
+                                text = stringResource(R.string.settings_overlay_description),
                                 color = Color(0xFF94A3B8),
                                 fontSize = 12.sp
                             )
@@ -573,6 +587,57 @@ fun SnowSettingsMenu(
                                 uncheckedTrackColor = Color(0xFF334155)
                             )
                         )
+                    }
+
+                    // 10. Выбор языка приложения (Per-app language)
+                    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = stringResource(R.string.settings_language_label),
+                            color = Color(0xFFE2E8F0),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            val languageOptions = listOf(
+                                Triple("", R.string.settings_language_system, currentLanguageTag.isEmpty()),
+                                Triple("ru", R.string.settings_language_russian, currentLanguageTag.startsWith("ru", ignoreCase = true)),
+                                Triple("en", R.string.settings_language_english, currentLanguageTag.startsWith("en", ignoreCase = true))
+                            )
+
+                            languageOptions.forEach { (tag, labelRes, isSelected) ->
+                                val btnBg = if (isSelected) activeBgColor else Color(0x331E293B)
+                                val btnBorder = if (isSelected) primaryAccent else Color(0x2264748B)
+
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .background(btnBg, RoundedCornerShape(10.dp))
+                                        .border(1.dp, btnBorder, RoundedCornerShape(10.dp))
+                                        .clickable {
+                                            val locales = if (tag.isEmpty()) {
+                                                LocaleListCompat.getEmptyLocaleList()
+                                            } else {
+                                                LocaleListCompat.forLanguageTags(tag)
+                                            }
+                                            AppCompatDelegate.setApplicationLocales(locales)
+                                        }
+                                        .padding(vertical = 10.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = stringResource(labelRes),
+                                        color = if (isSelected) Color.White else Color(0xFFCBD5E1),
+                                        fontSize = 12.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(2.dp))
@@ -601,7 +666,7 @@ fun SnowSettingsMenu(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Поддержать разработчика ❤️",
+                            text = stringResource(R.string.btn_support_developer),
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = Color(0xFFFFF1F2)
@@ -629,7 +694,7 @@ fun SnowSettingsMenu(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Выключить снег и выйти",
+                            text = stringResource(R.string.btn_exit_app),
                             fontSize = 15.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -648,7 +713,7 @@ fun SnowSettingsMenu(
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
-                            text = "Закрыть настройки",
+                            text = stringResource(R.string.btn_close_settings),
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Medium
                         )

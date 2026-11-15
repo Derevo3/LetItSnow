@@ -293,13 +293,13 @@ class SnowOverlayService : Service() {
         )
 
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setContentTitle("SnowOverlay активен")
-            .setContentText("Снегопад поверх всех приложений")
+            .setContentTitle(getString(R.string.notification_title))
+            .setContentText(getString(R.string.notification_text))
             .setSmallIcon(R.drawable.ic_snowflake_notification)
             .setContentIntent(mainPendingIntent)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
-            .addAction(0, "Остановить", stopPendingIntent)
+            .addAction(0, getString(R.string.notification_action_stop), stopPendingIntent)
             .build()
     }
 
@@ -307,10 +307,10 @@ class SnowOverlayService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 NOTIFICATION_CHANNEL_ID,
-                "Снегопад поверх приложений",
+                getString(R.string.notification_channel_name),
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Постоянное уведомление о работе снегопада поверх всех окон"
+                description = getString(R.string.notification_channel_description)
                 setShowBadge(false)
             }
             val notificationManager = getSystemService(NotificationManager::class.java)
