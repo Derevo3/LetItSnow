@@ -82,13 +82,19 @@
     <string name="color_theme_white_title">Белый</string>
     <string name="color_theme_white_desc">Классический чистый бело-голубой зимний снег</string>
     <string name="color_theme_scarlet_title">Алый</string>
-    <string name="color_theme_scarlet_desc">Мистический алый снегопад и кроваво-красные сугробы</string>
+    <string name="color_theme_scarlet_desc">Насыщенный кроваво-алый снегопад и рубиновые сугробы</string>
+    <string name="color_theme_pink_title">Розовый</string>
+    <string name="color_theme_pink_desc">Нежный пастельно-розовый снегопад и воздушные сугробы</string>
+    <string name="color_theme_black_title">Чёрный</string>
+    <string name="color_theme_black_desc">Загадочный обсидиановый снегопад и угольные сугробы</string>
 
     <!-- Snowflake Styles -->
     <string name="snowflake_style_fairytale_title">Сказочный</string>
     <string name="snowflake_style_fairytale_desc">90% микро-снежинок (1-3 dp), 8% хлопьев и 2% изящных кристаллов</string>
     <string name="snowflake_style_fluffy_title">Хлопья</string>
     <string name="snowflake_style_fluffy_desc">Мягкие пушистые зимние хлопья</string>
+    <string name="snowflake_style_hearts_title">Сердечки</string>
+    <string name="snowflake_style_hearts_desc">Кружащиеся в воздухе романтичные сердечки</string>
 
     <!-- Snowbank Styles -->
     <string name="snowbank_style_smooth_hills_title">Плавные холмы</string>

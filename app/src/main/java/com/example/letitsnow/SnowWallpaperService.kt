@@ -91,11 +91,12 @@ class SnowWallpaperService : WallpaperService() {
         private fun updateBackgroundGradient() {
             if (surfaceWidth <= 0f || surfaceHeight <= 0f) return
 
-            val isScarlet = SnowSimulationEngine.currentSettings.colorTheme == SnowColorTheme.SCARLET
-            val colors = if (isScarlet) {
-                intArrayOf(0xFF1A0505.toInt(), 0xFF2A0808.toInt(), 0xFF3D0C0C.toInt())
-            } else {
-                intArrayOf(0xFF070B19.toInt(), 0xFF0B132B.toInt(), 0xFF1C2541.toInt())
+            val theme = SnowSimulationEngine.currentSettings.colorTheme
+            val colors = when (theme) {
+                SnowColorTheme.SCARLET -> intArrayOf(0xFF1A0505.toInt(), 0xFF2A0808.toInt(), 0xFF3D0C0C.toInt())
+                SnowColorTheme.PINK -> intArrayOf(0xFF200614.toInt(), 0xFF330A21.toInt(), 0xFF4A0E30.toInt())
+                SnowColorTheme.BLACK -> intArrayOf(0xFF030712.toInt(), 0xFF090D16.toInt(), 0xFF111827.toInt())
+                SnowColorTheme.WHITE -> intArrayOf(0xFF070B19.toInt(), 0xFF0B132B.toInt(), 0xFF1C2541.toInt())
             }
 
             val gradient = LinearGradient(

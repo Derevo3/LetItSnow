@@ -82,13 +82,19 @@
     <string name="color_theme_white_title">White</string>
     <string name="color_theme_white_desc">Classic pure white and blue winter snow</string>
     <string name="color_theme_scarlet_title">Scarlet</string>
-    <string name="color_theme_scarlet_desc">Mystical scarlet snowfall and crimson drifts</string>
+    <string name="color_theme_scarlet_desc">Rich blood-scarlet snowfall and ruby snowbanks</string>
+    <string name="color_theme_pink_title">Pink</string>
+    <string name="color_theme_pink_desc">Gentle pastel pink snowfall and fluffy snowbanks</string>
+    <string name="color_theme_black_title">Black</string>
+    <string name="color_theme_black_desc">Mysterious obsidian snowfall and charcoal snowbanks</string>
 
     <!-- Snowflake Styles -->
     <string name="snowflake_style_fairytale_title">Fairytale</string>
     <string name="snowflake_style_fairytale_desc">90% micro-flakes (1-3 dp), 8% fluffy flakes and 2% delicate crystals</string>
     <string name="snowflake_style_fluffy_title">Fluffy</string>
     <string name="snowflake_style_fluffy_desc">Soft fluffy winter flakes</string>
+    <string name="snowflake_style_hearts_title">Hearts</string>
+    <string name="snowflake_style_hearts_desc">Romantic hearts swirling softly in the air</string>
 
     <!-- Snowbank Styles -->
     <string name="snowbank_style_smooth_hills_title">Smooth hills</string>

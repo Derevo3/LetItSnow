@@ -35,9 +35,21 @@ enum class SnowColorTheme(
     ),
     SCARLET(
         "Алый",
-        "Мистический алый снегопад и кроваво-красные сугробы",
+        "Насыщенный кроваво-алый снегопад и рубиновые сугробы",
         R.string.color_theme_scarlet_title,
         R.string.color_theme_scarlet_desc
+    ),
+    PINK(
+        "Розовый",
+        "Нежный пастельно-розовый снегопад и воздушные сугробы",
+        R.string.color_theme_pink_title,
+        R.string.color_theme_pink_desc
+    ),
+    BLACK(
+        "Чёрный",
+        "Загадочный обсидиановый снегопад и угольные сугробы",
+        R.string.color_theme_black_title,
+        R.string.color_theme_black_desc
     )
 }
 
@@ -61,6 +73,12 @@ enum class SnowflakeStyle(
         "Мягкие пушистые зимние хлопья",
         R.string.snowflake_style_fluffy_title,
         R.string.snowflake_style_fluffy_desc
+    ),
+    HEARTS(
+        "Сердечки",
+        "Кружащиеся в воздухе романтичные сердечки",
+        R.string.snowflake_style_hearts_title,
+        R.string.snowflake_style_hearts_desc
     )
 }
 

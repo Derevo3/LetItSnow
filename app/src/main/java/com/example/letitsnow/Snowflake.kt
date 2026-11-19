@@ -2,6 +2,7 @@ package com.example.letitsnow
 
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.Path
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
@@ -239,23 +240,27 @@ data class Snowflake(
             drawGlow(canvas, paint, density, effRadius, currentAlpha, colorTheme, scaleX, scaleY)
         }
 
-        val isScarlet = colorTheme == SnowColorTheme.SCARLET
         when (style) {
             SnowflakeStyle.FAIRYTALE -> {
-                if (isScarlet) {
-                    drawScarletFairytale(canvas, paint, density, effRadius, currentAlpha, scaleX, scaleY, sizeMultiplier)
-                } else {
-                    drawFairytale(canvas, paint, density, effRadius, currentAlpha, scaleX, scaleY, sizeMultiplier)
-                }
+                drawFairytale(canvas, paint, density, effRadius, currentAlpha, scaleX, scaleY, sizeMultiplier, colorTheme)
             }
             SnowflakeStyle.FLUFFY -> {
-                if (isScarlet) {
-                    drawFluffyScarlet(canvas, paint, effRadius, currentAlpha, scaleX, scaleY)
-                } else {
-                    drawFluffy(canvas, paint, effRadius, currentAlpha, scaleX, scaleY)
-                }
+                drawFluffy(canvas, paint, effRadius, currentAlpha, scaleX, scaleY, colorTheme)
+            }
+            SnowflakeStyle.HEARTS -> {
+                drawHearts(canvas, paint, density, effRadius, currentAlpha, scaleX, scaleY, sizeMultiplier, colorTheme)
             }
         }
+    }
+
+    private val heartPath = Path()
+
+    private fun buildHeart(path: Path, r: Float) {
+        path.reset()
+        path.moveTo(0f, -r * 0.32f)
+        path.cubicTo(-r * 0.65f, -r * 1.15f, -r * 1.35f, -r * 0.25f, 0f, r * 1.0f)
+        path.cubicTo(r * 1.35f, -r * 0.25f, r * 0.65f, -r * 1.15f, 0f, -r * 0.32f)
+        path.close()
     }
 
     /**
@@ -271,10 +276,11 @@ data class Snowflake(
         scaleX: Float,
         scaleY: Float
     ) {
-        val glowColor = if (colorTheme == SnowColorTheme.SCARLET) {
-            0xFFFF3B56.toInt() // Нежный рубиновый ореол
-        } else {
-            0xFFBAE6FD.toInt() // Нежно-голубой сказочный ореол
+        val glowColor = when (colorTheme) {
+            SnowColorTheme.SCARLET -> 0xFFFF1722.toInt() // Насыщенный ярко-алый ореол (без розового!)
+            SnowColorTheme.PINK -> 0xFFF472B6.toInt()    // Нежно-розовый ореол
+            SnowColorTheme.BLACK -> 0xFF64748B.toInt()   // Пепельно-серебристый туманный ореол
+            SnowColorTheme.WHITE -> 0xFFBAE6FD.toInt()   // Нежно-голубой сказочный ореол
         }
 
         paint.color = glowColor
@@ -291,8 +297,29 @@ data class Snowflake(
         canvas.drawCircle(x, y, (glowR * 0.55f) * scaleX, paint)
     }
 
+    private fun getMicroColor(colorTheme: SnowColorTheme, variant: Int): Int {
+        return when (colorTheme) {
+            SnowColorTheme.WHITE -> color
+            SnowColorTheme.SCARLET -> when (variant) {
+                0 -> 0xFFFF1E27.toInt() // Насыщенный ярко-алый
+                1 -> 0xFFDC2626.toInt() // Глубокий кроваво-красный
+                else -> 0xFF991B1B.toInt() // Тёмно-бордовый
+            }
+            SnowColorTheme.PINK -> when (variant) {
+                0 -> 0xFFFFF1F2.toInt() // Нежно-зефирный розовый
+                1 -> 0xFFF472B6.toInt() // Тёплый розовый
+                else -> 0xFFDB2777.toInt() // Малиново-розовый
+            }
+            SnowColorTheme.BLACK -> when (variant) {
+                0 -> 0xFF334155.toInt() // Пепельно-сланцевый
+                1 -> 0xFF1E293B.toInt() // Графитово-чёрный
+                else -> 0xFF0F172A.toInt() // Обсидиановый
+            }
+        }
+    }
+
     /**
-     * СТИЛЬ: FAIRYTALE SNOWFALL (Сказочный ночной снегопад) — Белый/Ледяной
+     * СТИЛЬ: FAIRYTALE SNOWFALL («Сказочный ночной снегопад»)
      */
     private fun drawFairytale(
         canvas: Canvas,
@@ -302,13 +329,14 @@ data class Snowflake(
         currentAlpha: Int,
         scaleX: Float,
         scaleY: Float,
-        sizeMultiplier: Float
+        sizeMultiplier: Float,
+        colorTheme: SnowColorTheme
     ) {
-        paint.color = color
-
         when (type) {
             TYPE_MICRO -> {
                 paint.style = Paint.Style.FILL
+                val microColor = getMicroColor(colorTheme, microVariant)
+                paint.color = microColor
 
                 when (microVariant) {
                     0 -> {
@@ -338,12 +366,34 @@ data class Snowflake(
 
                 paint.style = Paint.Style.FILL
 
+                val outerColor = when (colorTheme) {
+                    SnowColorTheme.WHITE -> color
+                    SnowColorTheme.SCARLET -> 0xFF7F1D1D.toInt()
+                    SnowColorTheme.PINK -> 0xFFFBCFE8.toInt()
+                    SnowColorTheme.BLACK -> 0xFF0F172A.toInt()
+                }
+                val coreColor = when (colorTheme) {
+                    SnowColorTheme.WHITE -> color
+                    SnowColorTheme.SCARLET -> 0xFFFF1E27.toInt()
+                    SnowColorTheme.PINK -> 0xFFFFF1F2.toInt()
+                    SnowColorTheme.BLACK -> 0xFF475569.toInt()
+                }
+                val petalColor = when (colorTheme) {
+                    SnowColorTheme.WHITE -> color
+                    SnowColorTheme.SCARLET -> 0xFFB91C1C.toInt()
+                    SnowColorTheme.PINK -> 0xFFF472B6.toInt()
+                    SnowColorTheme.BLACK -> 0xFF1E293B.toInt()
+                }
+
+                paint.color = outerColor
                 paint.alpha = (currentAlpha * 0.20f).toInt()
                 canvas.drawCircle(0f, 0f, effRadius * 1.4f, paint)
 
+                paint.color = coreColor
                 paint.alpha = currentAlpha
                 canvas.drawCircle(0f, 0f, effRadius * 0.62f, paint)
 
+                paint.color = petalColor
                 paint.alpha = (currentAlpha * 0.75f).toInt()
                 val petalDist = effRadius * 0.40f
                 val petalR = effRadius * 0.45f
@@ -364,6 +414,21 @@ data class Snowflake(
                 paint.style = Paint.Style.STROKE
                 paint.strokeCap = Paint.Cap.ROUND
                 paint.strokeWidth = (0.75f * density * sizeMultiplier).coerceAtLeast(0.7f)
+
+                val strokeColor = when (colorTheme) {
+                    SnowColorTheme.WHITE -> 0xFFBAE6FD.toInt()
+                    SnowColorTheme.SCARLET -> 0xFFFF1E27.toInt()
+                    SnowColorTheme.PINK -> 0xFFF472B6.toInt()
+                    SnowColorTheme.BLACK -> 0xFF64748B.toInt()
+                }
+                val centerColor = when (colorTheme) {
+                    SnowColorTheme.WHITE -> 0xFFFFFFFF.toInt()
+                    SnowColorTheme.SCARLET -> 0xFFE11D48.toInt()
+                    SnowColorTheme.PINK -> 0xFFFFF1F2.toInt()
+                    SnowColorTheme.BLACK -> 0xFF1E293B.toInt()
+                }
+
+                paint.color = strokeColor
                 paint.alpha = currentAlpha
 
                 val r = effRadius * 1.15f
@@ -379,6 +444,7 @@ data class Snowflake(
                 }
 
                 paint.style = Paint.Style.FILL
+                paint.color = centerColor
                 paint.alpha = currentAlpha
                 canvas.drawCircle(0f, 0f, effRadius * 0.20f, paint)
 
@@ -388,7 +454,7 @@ data class Snowflake(
     }
 
     /**
-     * СТИЛЬ: FLUFFY (Мягкие пушистые хлопья) — Белый
+     * СТИЛЬ: FLUFFY («Мягкие пушистые хлопья»)
      */
     private fun drawFluffy(
         canvas: Canvas,
@@ -396,10 +462,10 @@ data class Snowflake(
         effRadius: Float,
         currentAlpha: Int,
         scaleX: Float,
-        scaleY: Float
+        scaleY: Float,
+        colorTheme: SnowColorTheme
     ) {
         val tiltCos = if (isLanding) 1.0f else (abs(cos(tiltAngle)) * 0.6f + 0.4f)
-        paint.color = color
 
         canvas.save()
         canvas.translate(x, y)
@@ -407,9 +473,33 @@ data class Snowflake(
         canvas.scale(scaleX * tiltCos, scaleY)
 
         paint.style = Paint.Style.FILL
-        paint.alpha = (currentAlpha * 0.15f).toInt()
+
+        val hazeColor = when (colorTheme) {
+            SnowColorTheme.WHITE -> color
+            SnowColorTheme.SCARLET -> 0xFF7F1D1D.toInt()
+            SnowColorTheme.PINK -> 0xFFFBCFE8.toInt()
+            SnowColorTheme.BLACK -> 0xFF1E293B.toInt()
+        }
+        val petalColor = when (colorTheme) {
+            SnowColorTheme.WHITE -> color
+            SnowColorTheme.SCARLET -> 0xFFDC2626.toInt()
+            SnowColorTheme.PINK -> 0xFFF472B6.toInt()
+            SnowColorTheme.BLACK -> 0xFF0F172A.toInt()
+        }
+        val coreColor = when (colorTheme) {
+            SnowColorTheme.WHITE -> color
+            SnowColorTheme.SCARLET -> 0xFFFF1E27.toInt()
+            SnowColorTheme.PINK -> 0xFFFFF1F2.toInt()
+            SnowColorTheme.BLACK -> 0xFF334155.toInt()
+        }
+
+        // Внешняя полупрозрачная дымка
+        paint.color = hazeColor
+        paint.alpha = (currentAlpha * 0.18f).toInt()
         canvas.drawCircle(0f, 0f, effRadius * 1.5f, paint)
 
+        // Средние лепестки хлопьев
+        paint.color = petalColor
         paint.alpha = (currentAlpha * 0.70f).toInt()
         val off = effRadius * 0.38f
         val subR = effRadius * 0.45f
@@ -418,6 +508,8 @@ data class Snowflake(
         canvas.drawCircle(0f, off, subR, paint)
         canvas.drawCircle(0f, -off, subR, paint)
 
+        // Яркое ядро
+        paint.color = coreColor
         paint.alpha = currentAlpha
         canvas.drawCircle(0f, 0f, effRadius * 0.52f, paint)
 
@@ -425,9 +517,9 @@ data class Snowflake(
     }
 
     /**
-     * СТИЛЬ: FAIRYTALE — Алый / Кроваво-рубиновый
+     * СТИЛЬ: HEARTS («Кружащиеся романтичные сердечки»)
      */
-    private fun drawScarletFairytale(
+    private fun drawHearts(
         canvas: Canvas,
         paint: Paint,
         density: Float,
@@ -435,141 +527,102 @@ data class Snowflake(
         currentAlpha: Int,
         scaleX: Float,
         scaleY: Float,
-        sizeMultiplier: Float
+        sizeMultiplier: Float,
+        colorTheme: SnowColorTheme
     ) {
-        when (type) {
-            TYPE_MICRO -> {
-                paint.style = Paint.Style.FILL
-
-                val bloodyColor = when (microVariant) {
-                    0 -> 0xFFFF2A3A.toInt() // Ярко-алый
-                    1 -> 0xFFDC2626.toInt() // Насыщенный кровавый
-                    else -> 0xFF991B1B.toInt() // Глубокий бордовый
-                }
-                paint.color = bloodyColor
-
-                when (microVariant) {
-                    0 -> {
-                        paint.alpha = currentAlpha
-                        canvas.drawCircle(x, y, effRadius * scaleX, paint)
-                    }
-                    1 -> {
-                        paint.alpha = (currentAlpha * 0.35f).toInt()
-                        canvas.drawCircle(x, y, effRadius * 1.45f * scaleX, paint)
-                        paint.alpha = currentAlpha
-                        canvas.drawCircle(x, y, effRadius * 0.75f * scaleX, paint)
-                    }
-                    else -> {
-                        paint.alpha = currentAlpha
-                        val r = effRadius * 0.75f * scaleX
-                        canvas.drawCircle(x, y, r, paint)
-                        val tailY = y - r * 0.9f
-                        val tailR = r * 0.45f
-                        canvas.drawCircle(x, tailY, tailR, paint)
-                    }
-                }
-            }
-            TYPE_FLAKE -> {
-                canvas.save()
-                canvas.translate(x, y)
-                canvas.rotate(rotation)
-                if (isLanding) canvas.scale(scaleX, scaleY)
-
-                paint.style = Paint.Style.FILL
-
-                paint.color = 0xFF7F1D1D.toInt()
-                paint.alpha = (currentAlpha * 0.25f).toInt()
-                canvas.drawCircle(0f, 0f, effRadius * 1.5f, paint)
-
-                paint.color = 0xFFFF1E27.toInt()
-                paint.alpha = currentAlpha
-                canvas.drawCircle(0f, 0f, effRadius * 0.65f, paint)
-
-                paint.color = 0xFFE11D48.toInt()
-                paint.alpha = (currentAlpha * 0.85f).toInt()
-                val petalDist = effRadius * 0.42f
-                val petalR = effRadius * 0.48f
-                canvas.drawCircle(petalDist, 0f, petalR, paint)
-                canvas.drawCircle(-petalDist * 0.5f, petalDist * 0.866f, petalR, paint)
-                canvas.drawCircle(-petalDist * 0.5f, -petalDist * 0.866f, petalR, paint)
-
-                canvas.restore()
-            }
-            TYPE_CRYSTAL -> {
-                val tiltCos = if (isLanding) 1.0f else (abs(cos(tiltAngle)) * 0.65f + 0.35f)
-
-                canvas.save()
-                canvas.translate(x, y)
-                canvas.rotate(rotation)
-                canvas.scale(scaleX * tiltCos, scaleY)
-
-                paint.style = Paint.Style.STROKE
-                paint.strokeCap = Paint.Cap.ROUND
-                paint.strokeWidth = (0.85f * density * sizeMultiplier).coerceAtLeast(0.75f)
-                paint.color = 0xFFFF2D55.toInt()
-                paint.alpha = currentAlpha
-
-                val r = effRadius * 1.15f
-                val twig = r * 0.50f
-                val twigDx = r * 0.15f
-                val twigDy = r * 0.18f
-
-                for (i in 0 until 6) {
-                    canvas.drawLine(0f, 0f, r, 0f, paint)
-                    canvas.drawLine(twig, 0f, twig - twigDx, twigDy, paint)
-                    canvas.drawLine(twig, 0f, twig - twigDx, -twigDy, paint)
-                    canvas.rotate(60f)
-                }
-
-                paint.style = Paint.Style.FILL
-                paint.color = 0xFFFF0033.toInt()
-                paint.alpha = currentAlpha
-                canvas.drawCircle(0f, 0f, effRadius * 0.24f, paint)
-
-                canvas.restore()
-            }
-        }
-    }
-
-    /**
-     * СТИЛЬ: FLUFFY — Алый / Кроваво-рубиновый
-     */
-    private fun drawFluffyScarlet(
-        canvas: Canvas,
-        paint: Paint,
-        effRadius: Float,
-        currentAlpha: Int,
-        scaleX: Float,
-        scaleY: Float
-    ) {
-        val tiltCos = if (isLanding) 1.0f else (abs(cos(tiltAngle)) * 0.6f + 0.4f)
+        val tiltCos = if (isLanding) 1.0f else (abs(cos(tiltAngle)) * 0.45f + 0.55f)
 
         canvas.save()
         canvas.translate(x, y)
-        canvas.rotate(rotation)
+        // Сердечки игриво покачиваются и кружатся при полете
+        canvas.rotate(rotation + sin(tiltAngle) * 20f)
         canvas.scale(scaleX * tiltCos, scaleY)
 
-        paint.style = Paint.Style.FILL
+        val heartR = effRadius * 1.25f
+        buildHeart(heartPath, heartR)
 
-        // Внешняя полупрозрачная багровая дымка
-        paint.color = 0xFF7F1D1D.toInt()
-        paint.alpha = (currentAlpha * 0.22f).toInt()
-        canvas.drawCircle(0f, 0f, effRadius * 1.5f, paint)
+        when (type) {
+            TYPE_MICRO -> {
+                // Маленькие аккуратные сердечки
+                paint.style = Paint.Style.FILL
+                val c = getMicroColor(colorTheme, microVariant)
+                paint.color = c
+                paint.alpha = currentAlpha
+                canvas.drawPath(heartPath, paint)
+            }
+            TYPE_FLAKE -> {
+                // Мягкие пушистые сердечки с лёгким романтичным ореолом
+                paint.style = Paint.Style.FILL
 
-        // Средние рубиновые лепестки хлопьев
-        paint.color = 0xFFDC2626.toInt()
-        paint.alpha = (currentAlpha * 0.70f).toInt()
-        val off = effRadius * 0.38f
-        val subR = effRadius * 0.45f
-        canvas.drawCircle(-off, 0f, subR, paint)
-        canvas.drawCircle(off, 0f, subR, paint)
-        canvas.drawCircle(0f, off, subR, paint)
-        canvas.drawCircle(0f, -off, subR, paint)
+                val auraColor = when (colorTheme) {
+                    SnowColorTheme.WHITE -> 0x40E0F2FE.toInt()
+                    SnowColorTheme.SCARLET -> 0x507F1D1D.toInt()
+                    SnowColorTheme.PINK -> 0x50FBCFE8.toInt()
+                    SnowColorTheme.BLACK -> 0x50334155.toInt()
+                }
+                val mainColor = when (colorTheme) {
+                    SnowColorTheme.WHITE -> 0xFFFFFFFF.toInt()
+                    SnowColorTheme.SCARLET -> 0xFFDC2626.toInt()
+                    SnowColorTheme.PINK -> 0xFFF472B6.toInt()
+                    SnowColorTheme.BLACK -> 0xFF1E293B.toInt()
+                }
+                val innerColor = when (colorTheme) {
+                    SnowColorTheme.WHITE -> 0xFFF0F9FF.toInt()
+                    SnowColorTheme.SCARLET -> 0xFFFF1E27.toInt()
+                    SnowColorTheme.PINK -> 0xFFFDF2F8.toInt()
+                    SnowColorTheme.BLACK -> 0xFF475569.toInt()
+                }
 
-        // Яркое алое ядро
-        paint.color = 0xFFFF2A3A.toInt()
-        paint.alpha = currentAlpha
-        canvas.drawCircle(0f, 0f, effRadius * 0.52f, paint)
+                // Внешний ореол
+                paint.color = auraColor
+                paint.alpha = (currentAlpha * 0.35f).toInt()
+                canvas.scale(1.35f, 1.35f)
+                canvas.drawPath(heartPath, paint)
+                canvas.scale(1f / 1.35f, 1f / 1.35f)
+
+                // Основное тело
+                paint.color = mainColor
+                paint.alpha = currentAlpha
+                canvas.drawPath(heartPath, paint)
+
+                // Внутренний блик
+                paint.color = innerColor
+                paint.alpha = (currentAlpha * 0.75f).toInt()
+                canvas.scale(0.55f, 0.55f)
+                canvas.drawPath(heartPath, paint)
+            }
+            TYPE_CRYSTAL -> {
+                // Изящные ажурные сердечки с контуром и сиянием
+                paint.style = Paint.Style.STROKE
+                paint.strokeWidth = (1.2f * density * sizeMultiplier).coerceAtLeast(1.0f)
+                paint.strokeCap = Paint.Cap.ROUND
+                paint.strokeJoin = Paint.Join.ROUND
+
+                val strokeColor = when (colorTheme) {
+                    SnowColorTheme.WHITE -> 0xFFBAE6FD.toInt()
+                    SnowColorTheme.SCARLET -> 0xFFFF1E27.toInt()
+                    SnowColorTheme.PINK -> 0xFFF472B6.toInt()
+                    SnowColorTheme.BLACK -> 0xFF64748B.toInt()
+                }
+                val innerColor = when (colorTheme) {
+                    SnowColorTheme.WHITE -> 0xFFFFFFFF.toInt()
+                    SnowColorTheme.SCARLET -> 0xFFB91C1C.toInt()
+                    SnowColorTheme.PINK -> 0xFFEC4899.toInt()
+                    SnowColorTheme.BLACK -> 0xFF0F172A.toInt()
+                }
+
+                paint.color = strokeColor
+                paint.alpha = currentAlpha
+                canvas.drawPath(heartPath, paint)
+
+                // Внутреннее заполненное сердечко
+                paint.style = Paint.Style.FILL
+                paint.color = innerColor
+                paint.alpha = (currentAlpha * 0.85f).toInt()
+                canvas.scale(0.5f, 0.5f)
+                canvas.drawPath(heartPath, paint)
+            }
+        }
 
         canvas.restore()
     }

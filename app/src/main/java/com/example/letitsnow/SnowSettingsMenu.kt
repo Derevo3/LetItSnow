@@ -193,10 +193,30 @@ fun SnowSettingsMenu(
     }
 
     val isScarlet = settings.colorTheme == SnowColorTheme.SCARLET
-    val primaryAccent = if (isScarlet) Color(0xFFF87171) else Color(0xFF93C5FD)
-    val activeTrackColor = if (isScarlet) Color(0xFFEF4444) else Color(0xFF3B82F6)
-    val activeBgColor = if (isScarlet) Color(0xFFDC2626) else Color(0xFF2563EB)
-    val cardBorderColor = if (isScarlet) Color(0x44EF4444) else Color(0x3360A5FA)
+    val primaryAccent = when (settings.colorTheme) {
+        SnowColorTheme.SCARLET -> Color(0xFFF87171)
+        SnowColorTheme.PINK -> Color(0xFFF472B6)
+        SnowColorTheme.BLACK -> Color(0xFF94A3B8)
+        SnowColorTheme.WHITE -> Color(0xFF93C5FD)
+    }
+    val activeTrackColor = when (settings.colorTheme) {
+        SnowColorTheme.SCARLET -> Color(0xFFEF4444)
+        SnowColorTheme.PINK -> Color(0xFFEC4899)
+        SnowColorTheme.BLACK -> Color(0xFF475569)
+        SnowColorTheme.WHITE -> Color(0xFF3B82F6)
+    }
+    val activeBgColor = when (settings.colorTheme) {
+        SnowColorTheme.SCARLET -> Color(0xFFDC2626)
+        SnowColorTheme.PINK -> Color(0xFFDB2777)
+        SnowColorTheme.BLACK -> Color(0xFF1E293B)
+        SnowColorTheme.WHITE -> Color(0xFF2563EB)
+    }
+    val cardBorderColor = when (settings.colorTheme) {
+        SnowColorTheme.SCARLET -> Color(0x44EF4444)
+        SnowColorTheme.PINK -> Color(0x44EC4899)
+        SnowColorTheme.BLACK -> Color(0x4464748B)
+        SnowColorTheme.WHITE -> Color(0x3360A5FA)
+    }
 
     // Функция считывания текущего выбранного языка приложения
     fun getCurrentLanguageTag(): String {
@@ -436,12 +456,21 @@ fun SnowSettingsMenu(
                         ) {
                             SnowColorTheme.entries.forEach { theme ->
                                 val isSelected = settings.colorTheme == theme
-                                val isThemeScarlet = theme == SnowColorTheme.SCARLET
                                 val btnBg = if (isSelected) {
-                                    if (isThemeScarlet) Color(0xFFDC2626) else Color(0xFF2563EB)
+                                    when (theme) {
+                                        SnowColorTheme.SCARLET -> Color(0xFFDC2626)
+                                        SnowColorTheme.PINK -> Color(0xFFDB2777)
+                                        SnowColorTheme.BLACK -> Color(0xFF1E293B)
+                                        SnowColorTheme.WHITE -> Color(0xFF2563EB)
+                                    }
                                 } else Color(0x331E293B)
                                 val btnBorder = if (isSelected) {
-                                    if (isThemeScarlet) Color(0xFFF87171) else Color(0xFF93C5FD)
+                                    when (theme) {
+                                        SnowColorTheme.SCARLET -> Color(0xFFF87171)
+                                        SnowColorTheme.PINK -> Color(0xFFF472B6)
+                                        SnowColorTheme.BLACK -> Color(0xFF64748B)
+                                        SnowColorTheme.WHITE -> Color(0xFF93C5FD)
+                                    }
                                 } else Color(0x2264748B)
 
                                 Box(
@@ -460,7 +489,7 @@ fun SnowSettingsMenu(
                                     Text(
                                         text = stringResource(theme.titleRes),
                                         color = if (isSelected) Color.White else Color(0xFFCBD5E1),
-                                        fontSize = 13.sp,
+                                        fontSize = 12.sp,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                         maxLines = 1
                                     )

@@ -58,13 +58,16 @@ class ExampleUnitTest {
 
     @Test
     fun snowSettings_styles_and_colors_haveAllOptions() {
-        assertEquals(2, SnowflakeStyle.entries.size)
-        assertEquals(2, SnowColorTheme.entries.size)
+        assertEquals(3, SnowflakeStyle.entries.size)
+        assertEquals(4, SnowColorTheme.entries.size)
         assertEquals(4, SnowbankStyle.entries.size)
         assertEquals("Белый", SnowColorTheme.WHITE.title)
         assertEquals("Алый", SnowColorTheme.SCARLET.title)
+        assertEquals("Розовый", SnowColorTheme.PINK.title)
+        assertEquals("Чёрный", SnowColorTheme.BLACK.title)
         assertEquals("Сказочный", SnowflakeStyle.FAIRYTALE.title)
         assertEquals("Хлопья", SnowflakeStyle.FLUFFY.title)
+        assertEquals("Сердечки", SnowflakeStyle.HEARTS.title)
     }
 
     @Test

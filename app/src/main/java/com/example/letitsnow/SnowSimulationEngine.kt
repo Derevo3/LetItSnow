@@ -193,9 +193,8 @@ object SnowSimulationEngine {
         }
 
         // 2. Отрисовка сугроба (слой 2 поверх падающих в него снежинок)
-        val isBloody = currentSettings.colorTheme == SnowColorTheme.SCARLET
         val activeBankStyle = currentSettings.snowbankStyle
-        accumulation.draw(canvas, activeBankStyle, isBloody)
+        accumulation.draw(canvas, activeBankStyle, theme)
     }
 
     /**

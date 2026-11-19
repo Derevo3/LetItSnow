@@ -122,14 +122,14 @@ class SnowAccumulation {
 
     // Флаги кэширования отрисовки (Dirty Tracking)
     private var isClassicDirty: Boolean = true
-    private var lastClassicBloody: Boolean? = null
+    private var lastClassicTheme: SnowColorTheme? = null
 
     private var isSurfaceDirty: Boolean = true
-    private var lastSurfaceBloody: Boolean? = null
+    private var lastSurfaceTheme: SnowColorTheme? = null
 
     private var isVectorDirty: Boolean = true
     private var lastVectorStyle: SnowbankStyle? = null
-    private var lastVectorBloody: Boolean? = null
+    private var lastVectorTheme: SnowColorTheme? = null
 
     fun markDirty() {
         isClassicDirty = true
@@ -142,15 +142,21 @@ class SnowAccumulation {
     private val backPath = Path()
     private val crestPath = Path()
 
-    // Шейдеры градиентов для обычного и алого/кровавого сугроба
-    private var smoothMainShaderNormal: Shader? = null
-    private var smoothMainShaderBloody: Shader? = null
+    // Шейдеры градиентов для всех цветовых тем сугроба
+    private var smoothMainShaderWhite: Shader? = null
+    private var smoothMainShaderScarlet: Shader? = null
+    private var smoothMainShaderPink: Shader? = null
+    private var smoothMainShaderBlack: Shader? = null
 
-    private var puffyBodyShaderNormal: Shader? = null
-    private var puffyBodyShaderBloody: Shader? = null
+    private var puffyBodyShaderWhite: Shader? = null
+    private var puffyBodyShaderScarlet: Shader? = null
+    private var puffyBodyShaderPink: Shader? = null
+    private var puffyBodyShaderBlack: Shader? = null
 
-    private var iceBodyShaderNormal: Shader? = null
-    private var iceBodyShaderBloody: Shader? = null
+    private var iceBodyShaderWhite: Shader? = null
+    private var iceBodyShaderScarlet: Shader? = null
+    private var iceBodyShaderPink: Shader? = null
+    private var iceBodyShaderBlack: Shader? = null
 
     // Кисти для стиля «Плавные холмы» (SMOOTH_HILLS)
     private val smoothMainPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -261,83 +267,86 @@ class SnowAccumulation {
         puffyRimPaint.strokeWidth = 2.4f * densityScale
         iceCrestPaint.strokeWidth = 3.0f * densityScale
 
-        smoothMainShaderNormal = LinearGradient(
-            0f, 0f,
-            0f, h,
-            intArrayOf(
-                0xFFFFFFFF.toInt(),
-                0xFFF6FAFE.toInt(),
-                0xFFE2EFFB.toInt(),
-                0xFFC5DCF4.toInt()
-            ),
+        // 1. Шейдеры для стиля SMOOTH_HILLS
+        smoothMainShaderWhite = LinearGradient(
+            0f, 0f, 0f, h,
+            intArrayOf(0xFFFFFFFF.toInt(), 0xFFF6FAFE.toInt(), 0xFFE2EFFB.toInt(), 0xFFC5DCF4.toInt()),
             floatArrayOf(0f, 0.35f, 0.75f, 1.0f),
             Shader.TileMode.CLAMP
         )
-        smoothMainShaderBloody = LinearGradient(
-            0f, 0f,
-            0f, h,
-            intArrayOf(
-                0xFFFF6B81.toInt(),
-                0xFFEF4444.toInt(),
-                0xFF991B1B.toInt(),
-                0xFF450A0A.toInt()
-            ),
+        smoothMainShaderScarlet = LinearGradient(
+            0f, 0f, 0f, h,
+            intArrayOf(0xFFE60012.toInt(), 0xFFDC2626.toInt(), 0xFF991B1B.toInt(), 0xFF450A0A.toInt()),
             floatArrayOf(0f, 0.30f, 0.70f, 1.0f),
             Shader.TileMode.CLAMP
         )
-        smoothMainPaint.shader = smoothMainShaderNormal
+        smoothMainShaderPink = LinearGradient(
+            0f, 0f, 0f, h,
+            intArrayOf(0xFFFFF1F2.toInt(), 0xFFFBCFE8.toInt(), 0xFFF472B6.toInt(), 0xFF9D174D.toInt()),
+            floatArrayOf(0f, 0.30f, 0.70f, 1.0f),
+            Shader.TileMode.CLAMP
+        )
+        smoothMainShaderBlack = LinearGradient(
+            0f, 0f, 0f, h,
+            intArrayOf(0xFF334155.toInt(), 0xFF1E293B.toInt(), 0xFF0F172A.toInt(), 0xFF020617.toInt()),
+            floatArrayOf(0f, 0.25f, 0.65f, 1.0f),
+            Shader.TileMode.CLAMP
+        )
+        smoothMainPaint.shader = smoothMainShaderWhite
 
-        puffyBodyShaderNormal = LinearGradient(
-            0f, 0f,
-            0f, h,
-            intArrayOf(
-                0xFFFFFFFF.toInt(),
-                0xFFF8FBFF.toInt(),
-                0xFFE5F0FA.toInt(),
-                0xFFD0E4F7.toInt()
-            ),
+        // 2. Шейдеры для стиля PUFFY_CLOUDS
+        puffyBodyShaderWhite = LinearGradient(
+            0f, 0f, 0f, h,
+            intArrayOf(0xFFFFFFFF.toInt(), 0xFFF8FBFF.toInt(), 0xFFE5F0FA.toInt(), 0xFFD0E4F7.toInt()),
             floatArrayOf(0f, 0.40f, 0.80f, 1.0f),
             Shader.TileMode.CLAMP
         )
-        puffyBodyShaderBloody = LinearGradient(
-            0f, 0f,
-            0f, h,
-            intArrayOf(
-                0xFFFFA4B3.toInt(),
-                0xFFE11D48.toInt(),
-                0xFF881337.toInt(),
-                0xFF4C0519.toInt()
-            ),
+        puffyBodyShaderScarlet = LinearGradient(
+            0f, 0f, 0f, h,
+            intArrayOf(0xFFEF4444.toInt(), 0xFFDC2626.toInt(), 0xFF881337.toInt(), 0xFF4C0519.toInt()),
             floatArrayOf(0f, 0.35f, 0.75f, 1.0f),
             Shader.TileMode.CLAMP
         )
-        puffyBodyPaint.shader = puffyBodyShaderNormal
+        puffyBodyShaderPink = LinearGradient(
+            0f, 0f, 0f, h,
+            intArrayOf(0xFFFFF0F5.toInt(), 0xFFFCE7F3.toInt(), 0xFFEC4899.toInt(), 0xFF831843.toInt()),
+            floatArrayOf(0f, 0.35f, 0.75f, 1.0f),
+            Shader.TileMode.CLAMP
+        )
+        puffyBodyShaderBlack = LinearGradient(
+            0f, 0f, 0f, h,
+            intArrayOf(0xFF475569.toInt(), 0xFF1E293B.toInt(), 0xFF0F172A.toInt(), 0xFF020617.toInt()),
+            floatArrayOf(0f, 0.30f, 0.70f, 1.0f),
+            Shader.TileMode.CLAMP
+        )
+        puffyBodyPaint.shader = puffyBodyShaderWhite
 
-        iceBodyShaderNormal = LinearGradient(
-            0f, 0f,
-            0f, h,
-            intArrayOf(
-                0xFFF0F9FF.toInt(),
-                0xCCE0F2FE.toInt(),
-                0xAA93C5FD.toInt(),
-                0x993B82F6.toInt()
-            ),
+        // 3. Шейдеры для стиля ICY_SHELF
+        iceBodyShaderWhite = LinearGradient(
+            0f, 0f, 0f, h,
+            intArrayOf(0xFFF0F9FF.toInt(), 0xCCE0F2FE.toInt(), 0xAA93C5FD.toInt(), 0x993B82F6.toInt()),
             floatArrayOf(0f, 0.25f, 0.65f, 1.0f),
             Shader.TileMode.CLAMP
         )
-        iceBodyShaderBloody = LinearGradient(
-            0f, 0f,
-            0f, h,
-            intArrayOf(
-                0xFFFF859B.toInt(),
-                0xCCE11D48.toInt(),
-                0xAA991B1B.toInt(),
-                0x995A0B17.toInt()
-            ),
+        iceBodyShaderScarlet = LinearGradient(
+            0f, 0f, 0f, h,
+            intArrayOf(0xFFFF1E27.toInt(), 0xCCDC2626.toInt(), 0xAA991B1B.toInt(), 0x995A0B17.toInt()),
             floatArrayOf(0f, 0.25f, 0.65f, 1.0f),
             Shader.TileMode.CLAMP
         )
-        iceBodyPaint.shader = iceBodyShaderNormal
+        iceBodyShaderPink = LinearGradient(
+            0f, 0f, 0f, h,
+            intArrayOf(0xFFFDF2F8.toInt(), 0xCCFBCFE8.toInt(), 0xAAF472B6.toInt(), 0x99BE185D.toInt()),
+            floatArrayOf(0f, 0.25f, 0.65f, 1.0f),
+            Shader.TileMode.CLAMP
+        )
+        iceBodyShaderBlack = LinearGradient(
+            0f, 0f, 0f, h,
+            intArrayOf(0xFF64748B.toInt(), 0xCC334155.toInt(), 0xAA1E293B.toInt(), 0x990F172A.toInt()),
+            floatArrayOf(0f, 0.25f, 0.65f, 1.0f),
+            Shader.TileMode.CLAMP
+        )
+        iceBodyPaint.shader = iceBodyShaderWhite
 
         if (isSnowbankEnabled && prevDensities.isNotEmpty() && prevCols > 0 && prevRows > 0 && prevCellH > 0f) {
             val scaleC = prevCols.toFloat() / cols.toFloat()
@@ -774,32 +783,37 @@ class SnowAccumulation {
     /**
      * Отрисовывает накопившийся снег:
      * - При активном [isSurfaceCoverActive]: снежный покров на горизонтально лежащем стекле.
-     * - Иначе: сугроб у нижнего края в соответствии со стилем [style] и цветом [isBloody].
+     * - Иначе: сугроб у нижнего края в соответствии со стилем [style] и темой [colorTheme].
      */
-    fun draw(canvas: Canvas, style: SnowbankStyle = SnowbankStyle.SMOOTH_HILLS, isBloody: Boolean = false) {
+    fun draw(canvas: Canvas, style: SnowbankStyle = SnowbankStyle.SMOOTH_HILLS, colorTheme: SnowColorTheme = SnowColorTheme.WHITE) {
         if (isSurfaceCoverActive) {
-            drawSurfaceSnowCover(canvas, isBloody)
+            drawSurfaceSnowCover(canvas, colorTheme)
             return
         }
         if (!isSnowbankEnabled) return
 
         when (style) {
-            SnowbankStyle.CLASSIC -> drawClassic(canvas, isBloody)
-            SnowbankStyle.SMOOTH_HILLS -> drawSmoothHills(canvas, isBloody)
-            SnowbankStyle.PUFFY_CLOUDS -> drawPuffyClouds(canvas, isBloody)
-            SnowbankStyle.ICY_SHELF -> drawIcyShelf(canvas, isBloody)
+            SnowbankStyle.CLASSIC -> drawClassic(canvas, colorTheme)
+            SnowbankStyle.SMOOTH_HILLS -> drawSmoothHills(canvas, colorTheme)
+            SnowbankStyle.PUFFY_CLOUDS -> drawPuffyClouds(canvas, colorTheme)
+            SnowbankStyle.ICY_SHELF -> drawIcyShelf(canvas, colorTheme)
         }
+    }
+
+    @Deprecated("Use draw with SnowColorTheme")
+    fun draw(canvas: Canvas, style: SnowbankStyle, isBloody: Boolean) {
+        draw(canvas, style, if (isBloody) SnowColorTheme.SCARLET else SnowColorTheme.WHITE)
     }
 
     /**
      * Отрисовка снежного покрова на горизонтально лежащем стекле телефона.
      * Использует кэширование растра и предрассчитанный шум для достижения максимального FPS.
      */
-    private fun drawSurfaceSnowCover(canvas: Canvas, isBloody: Boolean) {
+    private fun drawSurfaceSnowCover(canvas: Canvas, colorTheme: SnowColorTheme) {
         val bmp = gridBitmap ?: return
         if (bmp.isRecycled || cols == 0 || rows == 0) return
 
-        if (isSurfaceDirty || lastSurfaceBloody != isBloody) {
+        if (isSurfaceDirty || lastSurfaceTheme != colorTheme) {
             // 1. Быстрое 3-точечное сглаживание по горизонтали
             for (r in 0 until rows) {
                 val rOffset = r * cols
@@ -824,7 +838,6 @@ class SnowAccumulation {
                         tempBlur[idx]            * 0.50f +
                         tempBlur[rP1 * cols + c] * 0.25f
 
-                    // Гарантируем абсолютную чистоту внутри очищенного следа
                     visualDensities[idx] = if (surfaceClearedMask[idx]) {
                         minOf(blurred, surfaceDensities[idx])
                     } else {
@@ -841,7 +854,7 @@ class SnowAccumulation {
                     val vd = visualDensities[idx]
 
                     if (vd <= 0.012f) {
-                        pixels[idx] = 0 // Полная прозрачность (открытый экран под стеклом)
+                        pixels[idx] = 0 // Полная прозрачность
                     } else {
                         val normD = ((vd - 0.012f) / 0.40f).coerceIn(0f, 1f)
                         val smoothAlpha = normD * normD * (3f - 2f * normD)
@@ -854,14 +867,28 @@ class SnowAccumulation {
                         val green: Int
                         val blue: Int
 
-                        if (isBloody) {
-                            red = (248 - depth * 1.8f + sparkle).toInt().coerceIn(160, 255)
-                            green = (38 - depth * 0.8f + sparkle * 0.3f).toInt().coerceIn(12, 65)
-                            blue = (50 - depth * 0.8f + sparkle * 0.3f).toInt().coerceIn(16, 85)
-                        } else {
-                            red = (255 - depth * 1.5f + sparkle).toInt().coerceIn(215, 255)
-                            green = (255 - depth * 0.8f + sparkle).toInt().coerceIn(230, 255)
-                            blue = 255
+                        when (colorTheme) {
+                            SnowColorTheme.SCARLET -> {
+                                red = (245 - depth * 1.5f + sparkle).toInt().coerceIn(180, 255)
+                                green = (12 - depth * 0.4f).toInt().coerceIn(0, 25)
+                                blue = (12 - depth * 0.4f).toInt().coerceIn(0, 25)
+                            }
+                            SnowColorTheme.PINK -> {
+                                red = 255
+                                green = (150 - depth * 1.2f + sparkle * 0.5f).toInt().coerceIn(100, 190)
+                                blue = (185 - depth * 1.0f + sparkle * 0.5f).toInt().coerceIn(140, 220)
+                            }
+                            SnowColorTheme.BLACK -> {
+                                val cVal = (50 - depth * 1.5f + sparkle * 0.5f).toInt().coerceIn(15, 75)
+                                red = cVal
+                                green = cVal
+                                blue = (cVal + 5).coerceIn(15, 80)
+                            }
+                            SnowColorTheme.WHITE -> {
+                                red = (255 - depth * 1.5f + sparkle).toInt().coerceIn(215, 255)
+                                green = (255 - depth * 0.8f + sparkle).toInt().coerceIn(230, 255)
+                                blue = 255
+                            }
                         }
 
                         pixels[idx] = (alpha shl 24) or (red shl 16) or (green shl 8) or blue
@@ -871,7 +898,7 @@ class SnowAccumulation {
 
             bmp.setPixels(pixels, 0, cols, 0, 0, cols, rows)
             isSurfaceDirty = false
-            lastSurfaceBloody = isBloody
+            lastSurfaceTheme = colorTheme
         }
 
         canvas.drawBitmap(bmp, srcRect, dstRect, bitmapPaint)
@@ -915,20 +942,33 @@ class SnowAccumulation {
         }
     }
 
-    private fun drawSmoothHills(canvas: Canvas, isBloody: Boolean) {
+    private fun drawSmoothHills(canvas: Canvas, colorTheme: SnowColorTheme) {
         if (cols <= 1 || rows <= 0) return
 
-        if (isVectorDirty || lastVectorStyle != SnowbankStyle.SMOOTH_HILLS || lastVectorBloody != isBloody) {
+        if (isVectorDirty || lastVectorStyle != SnowbankStyle.SMOOTH_HILLS || lastVectorTheme != colorTheme) {
             computeSmoothProfile(blurRadius = 6)
 
-            if (isBloody) {
-                smoothMainPaint.shader = smoothMainShaderBloody
-                smoothBackPaint.color = 0x667F1D1D.toInt()
-                smoothCrestPaint.color = 0xF5FF6B81.toInt()
-            } else {
-                smoothMainPaint.shader = smoothMainShaderNormal
-                smoothBackPaint.color = 0x48A0C8F0.toInt()
-                smoothCrestPaint.color = 0xF5FFFFFF.toInt()
+            when (colorTheme) {
+                SnowColorTheme.SCARLET -> {
+                    smoothMainPaint.shader = smoothMainShaderScarlet
+                    smoothBackPaint.color = 0x88450A0A.toInt()
+                    smoothCrestPaint.color = 0xFFFF1722.toInt()
+                }
+                SnowColorTheme.PINK -> {
+                    smoothMainPaint.shader = smoothMainShaderPink
+                    smoothBackPaint.color = 0x66831843.toInt()
+                    smoothCrestPaint.color = 0xFFFFC0CB.toInt()
+                }
+                SnowColorTheme.BLACK -> {
+                    smoothMainPaint.shader = smoothMainShaderBlack
+                    smoothBackPaint.color = 0x88020617.toInt()
+                    smoothCrestPaint.color = 0xFF64748B.toInt()
+                }
+                SnowColorTheme.WHITE -> {
+                    smoothMainPaint.shader = smoothMainShaderWhite
+                    smoothBackPaint.color = 0x48A0C8F0.toInt()
+                    smoothCrestPaint.color = 0xF5FFFFFF.toInt()
+                }
             }
 
             backPath.reset()
@@ -982,7 +1022,7 @@ class SnowAccumulation {
 
             isVectorDirty = false
             lastVectorStyle = SnowbankStyle.SMOOTH_HILLS
-            lastVectorBloody = isBloody
+            lastVectorTheme = colorTheme
         }
 
         canvas.drawPath(backPath, smoothBackPaint)
@@ -990,20 +1030,33 @@ class SnowAccumulation {
         canvas.drawPath(crestPath, smoothCrestPaint)
     }
 
-    private fun drawPuffyClouds(canvas: Canvas, isBloody: Boolean) {
+    private fun drawPuffyClouds(canvas: Canvas, colorTheme: SnowColorTheme) {
         if (cols <= 1 || rows <= 0) return
 
-        if (isVectorDirty || lastVectorStyle != SnowbankStyle.PUFFY_CLOUDS || lastVectorBloody != isBloody) {
+        if (isVectorDirty || lastVectorStyle != SnowbankStyle.PUFFY_CLOUDS || lastVectorTheme != colorTheme) {
             computeSmoothProfile(blurRadius = 4)
 
-            if (isBloody) {
-                puffyBodyPaint.shader = puffyBodyShaderBloody
-                puffyBackPaint.color = 0x557F1D1D.toInt()
-                puffyRimPaint.color = 0xEEFFA4B3.toInt()
-            } else {
-                puffyBodyPaint.shader = puffyBodyShaderNormal
-                puffyBackPaint.color = 0x40A0C8F0.toInt()
-                puffyRimPaint.color = 0xEEFFFFFF.toInt()
+            when (colorTheme) {
+                SnowColorTheme.SCARLET -> {
+                    puffyBodyPaint.shader = puffyBodyShaderScarlet
+                    puffyBackPaint.color = 0x88450A0A.toInt()
+                    puffyRimPaint.color = 0xFFFF1722.toInt()
+                }
+                SnowColorTheme.PINK -> {
+                    puffyBodyPaint.shader = puffyBodyShaderPink
+                    puffyBackPaint.color = 0x66831843.toInt()
+                    puffyRimPaint.color = 0xFFFCE7F3.toInt()
+                }
+                SnowColorTheme.BLACK -> {
+                    puffyBodyPaint.shader = puffyBodyShaderBlack
+                    puffyBackPaint.color = 0x88020617.toInt()
+                    puffyRimPaint.color = 0xFF475569.toInt()
+                }
+                SnowColorTheme.WHITE -> {
+                    puffyBodyPaint.shader = puffyBodyShaderWhite
+                    puffyBackPaint.color = 0x40A0C8F0.toInt()
+                    puffyRimPaint.color = 0xEEFFFFFF.toInt()
+                }
             }
 
             backPath.reset()
@@ -1068,7 +1121,7 @@ class SnowAccumulation {
 
             isVectorDirty = false
             lastVectorStyle = SnowbankStyle.PUFFY_CLOUDS
-            lastVectorBloody = isBloody
+            lastVectorTheme = colorTheme
         }
 
         canvas.drawPath(backPath, puffyBackPaint)
@@ -1076,20 +1129,33 @@ class SnowAccumulation {
         canvas.drawPath(crestPath, puffyRimPaint)
     }
 
-    private fun drawIcyShelf(canvas: Canvas, isBloody: Boolean) {
+    private fun drawIcyShelf(canvas: Canvas, colorTheme: SnowColorTheme) {
         if (cols <= 1 || rows <= 0) return
 
-        if (isVectorDirty || lastVectorStyle != SnowbankStyle.ICY_SHELF || lastVectorBloody != isBloody) {
+        if (isVectorDirty || lastVectorStyle != SnowbankStyle.ICY_SHELF || lastVectorTheme != colorTheme) {
             computeSmoothProfile(blurRadius = 3)
 
-            if (isBloody) {
-                iceBodyPaint.shader = iceBodyShaderBloody
-                iceBackPaint.color = 0x55881337.toInt()
-                iceCrestPaint.color = 0xFFFF859B.toInt()
-            } else {
-                iceBodyPaint.shader = iceBodyShaderNormal
-                iceBackPaint.color = 0x3360A5FA.toInt()
-                iceCrestPaint.color = 0xFFE0F2FE.toInt()
+            when (colorTheme) {
+                SnowColorTheme.SCARLET -> {
+                    iceBodyPaint.shader = iceBodyShaderScarlet
+                    iceBackPaint.color = 0x88450A0A.toInt()
+                    iceCrestPaint.color = 0xFFFF1722.toInt()
+                }
+                SnowColorTheme.PINK -> {
+                    iceBodyPaint.shader = iceBodyShaderPink
+                    iceBackPaint.color = 0x66831843.toInt()
+                    iceCrestPaint.color = 0xFFFCE7F3.toInt()
+                }
+                SnowColorTheme.BLACK -> {
+                    iceBodyPaint.shader = iceBodyShaderBlack
+                    iceBackPaint.color = 0x88020617.toInt()
+                    iceCrestPaint.color = 0xFF64748B.toInt()
+                }
+                SnowColorTheme.WHITE -> {
+                    iceBodyPaint.shader = iceBodyShaderWhite
+                    iceBackPaint.color = 0x3360A5FA.toInt()
+                    iceCrestPaint.color = 0xFFE0F2FE.toInt()
+                }
             }
 
             backPath.reset()
@@ -1142,7 +1208,7 @@ class SnowAccumulation {
 
             isVectorDirty = false
             lastVectorStyle = SnowbankStyle.ICY_SHELF
-            lastVectorBloody = isBloody
+            lastVectorTheme = colorTheme
         }
 
         canvas.drawPath(backPath, iceBackPaint)
@@ -1154,11 +1220,11 @@ class SnowAccumulation {
      * СТИЛЬ «КЛАССИКА»: Детализированный сглаженный сугроб у нижнего края экрана.
      * Оптимизирован с кэшированием текстуры и предрассчитанным шумом.
      */
-    fun drawClassic(canvas: Canvas, isBloody: Boolean = false) {
+    fun drawClassic(canvas: Canvas, colorTheme: SnowColorTheme = SnowColorTheme.WHITE) {
         val bmp = gridBitmap ?: return
         if (bmp.isRecycled || cols == 0 || rows == 0) return
 
-        if (isClassicDirty || lastClassicBloody != isBloody) {
+        if (isClassicDirty || lastClassicTheme != colorTheme) {
             // 1. Сглаживание по горизонтали (7-точечный Гауссов фильтр)
             for (r in 0 until rows) {
                 val rOffset = r * cols
@@ -1248,14 +1314,28 @@ class SnowAccumulation {
                         val green: Int
                         val blue: Int
 
-                        if (isBloody) {
-                            red = (245 - (80 * shadowRatio) + microDetail + crestHighlight).toInt().coerceIn(120, 255)
-                            green = (45 - (30 * shadowRatio) + microDetail * 0.5f).toInt().coerceIn(10, 80)
-                            blue = (55 - (35 * shadowRatio) + microDetail * 0.5f).toInt().coerceIn(15, 95)
-                        } else {
-                            red = (255 - (36 * shadowRatio) + microDetail + crestHighlight).toInt().coerceIn(195, 255)
-                            green = (255 - (20 * shadowRatio) + microDetail + crestHighlight).toInt().coerceIn(215, 255)
-                            blue = 255
+                        when (colorTheme) {
+                            SnowColorTheme.SCARLET -> {
+                                red = (245 - (70 * shadowRatio) + microDetail + crestHighlight).toInt().coerceIn(160, 255)
+                                green = (15 - (10 * shadowRatio)).toInt().coerceIn(0, 25)
+                                blue = (15 - (10 * shadowRatio)).toInt().coerceIn(0, 25)
+                            }
+                            SnowColorTheme.PINK -> {
+                                red = 255
+                                green = (160 - (40 * shadowRatio) + microDetail * 0.5f).toInt().coerceIn(110, 200)
+                                blue = (195 - (45 * shadowRatio) + microDetail * 0.5f).toInt().coerceIn(145, 225)
+                            }
+                            SnowColorTheme.BLACK -> {
+                                val cVal = (55 - (35 * shadowRatio) + microDetail * 0.5f + crestHighlight * 0.5f).toInt().coerceIn(15, 80)
+                                red = cVal
+                                green = cVal
+                                blue = (cVal + 4).coerceIn(15, 85)
+                            }
+                            SnowColorTheme.WHITE -> {
+                                red = (255 - (36 * shadowRatio) + microDetail + crestHighlight).toInt().coerceIn(195, 255)
+                                green = (255 - (20 * shadowRatio) + microDetail + crestHighlight).toInt().coerceIn(215, 255)
+                                blue = 255
+                            }
                         }
 
                         pixels[idx] = (alpha shl 24) or (red shl 16) or (green shl 8) or blue
@@ -1265,7 +1345,7 @@ class SnowAccumulation {
 
             bmp.setPixels(pixels, 0, cols, 0, 0, cols, rows)
             isClassicDirty = false
-            lastClassicBloody = isBloody
+            lastClassicTheme = colorTheme
         }
 
         canvas.drawBitmap(bmp, srcRect, dstRect, bitmapPaint)
