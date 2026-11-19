@@ -242,6 +242,10 @@ class MainActivity : AppCompatActivity() {
 
             // Управление жизненным циклом анимации в фоне/на переднем плане внутри приложения
             DisposableEffect(lifecycleOwner, snowView, shakeDetector) {
+                if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                    snowView.start()
+                    shakeDetector?.start()
+                }
                 val observer = LifecycleEventObserver { _, event ->
                     when (event) {
                         Lifecycle.Event.ON_RESUME -> {
@@ -313,7 +317,13 @@ class MainActivity : AppCompatActivity() {
                 AndroidView(
                     factory = {
                         (snowView.parent as? ViewGroup)?.removeView(snowView)
+                        snowView.start()
                         snowView
+                    },
+                    update = { view ->
+                        if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                            view.start()
+                        }
                     },
                     modifier = Modifier.fillMaxSize()
                 )

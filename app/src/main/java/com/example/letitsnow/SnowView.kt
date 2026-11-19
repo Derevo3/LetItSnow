@@ -152,6 +152,14 @@ class SnowView @JvmOverloads constructor(
 
             if (lastRenderedFrameTimeNanos > 0L) {
                 val elapsedNanos = frameTimeNanos - lastRenderedFrameTimeNanos
+                if (elapsedNanos <= 0L) {
+                    lastRenderedFrameTimeNanos = frameTimeNanos
+                    if (isRunning) {
+                        postNextFrame()
+                    }
+                    return
+                }
+
                 if (minFrameIntervalNanos > 0L && elapsedNanos < minFrameIntervalNanos) {
                     // Пропускаем этот такт VSYNC, удерживая равномерный FPS и снижая нагрузку на CPU/GPU
                     if (isRunning) {
@@ -372,7 +380,7 @@ class SnowView @JvmOverloads constructor(
             if (visibility == VISIBLE) {
                 start()
             }
-        } else if (windowVisibility == VISIBLE && isShown) {
+        } else if (windowVisibility == VISIBLE) {
             start()
         }
     }
@@ -386,17 +394,6 @@ class SnowView @JvmOverloads constructor(
     override fun onWindowVisibilityChanged(visibility: Int) {
         super.onWindowVisibilityChanged(visibility)
         if (visibility == VISIBLE) {
-            if (!isOverlayMode || this.visibility == VISIBLE) {
-                start()
-            }
-        } else {
-            pause()
-        }
-    }
-
-    override fun onVisibilityChanged(changedView: View, visibility: Int) {
-        super.onVisibilityChanged(changedView, visibility)
-        if (visibility == VISIBLE && windowVisibility == VISIBLE) {
             if (!isOverlayMode || this.visibility == VISIBLE) {
                 start()
             }
