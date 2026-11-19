@@ -23,34 +23,35 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchColors
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -366,29 +367,32 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            val primaryAccent = when (currentSettings.colorTheme) {
-                SnowColorTheme.SCARLET -> Color(0xFFF87171)
-                SnowColorTheme.PINK -> Color(0xFFF472B6)
-                SnowColorTheme.BLACK -> Color(0xFF94A3B8)
-                SnowColorTheme.WHITE -> Color(0xFF93C5FD)
-            }
             val activeTrackColor = when (currentSettings.colorTheme) {
                 SnowColorTheme.SCARLET -> Color(0xFFEF4444)
                 SnowColorTheme.PINK -> Color(0xFFEC4899)
                 SnowColorTheme.BLACK -> Color(0xFF475569)
-                SnowColorTheme.WHITE -> Color(0xFF3B82F6)
+                SnowColorTheme.WHITE -> Color(0xFF388BFD)
             }
-            val cardBorderColor = when (currentSettings.colorTheme) {
-                SnowColorTheme.SCARLET -> Color(0x44EF4444)
-                SnowColorTheme.PINK -> Color(0x44EC4899)
-                SnowColorTheme.BLACK -> Color(0x4464748B)
-                SnowColorTheme.WHITE -> Color(0x3360A5FA)
+            val pillBorderColor = when (currentSettings.colorTheme) {
+                SnowColorTheme.SCARLET -> Color(0x40EF4444)
+                SnowColorTheme.PINK -> Color(0x40EC4899)
+                SnowColorTheme.BLACK -> Color(0x4064748B)
+                SnowColorTheme.WHITE -> Color(0x38388BFD)
             }
-            val switchColors = SwitchDefaults.colors(
-                checkedThumbColor = primaryAccent,
+            val pillBgColor = Color(0x2E0B2040)
+            val pillDividerColor = when (currentSettings.colorTheme) {
+                SnowColorTheme.SCARLET -> Color(0x33EF4444)
+                SnowColorTheme.PINK -> Color(0x33EC4899)
+                SnowColorTheme.BLACK -> Color(0x3364748B)
+                SnowColorTheme.WHITE -> Color(0x33388BFD)
+            }
+            val pillSwitchColors = SwitchDefaults.colors(
+                checkedThumbColor = Color(0xFFF8FAFC),
                 checkedTrackColor = activeTrackColor,
-                uncheckedThumbColor = Color(0xFF64748B),
-                uncheckedTrackColor = Color(0xFF334155)
+                checkedBorderColor = Color.Transparent,
+                uncheckedThumbColor = Color(0xFF7A8B9E),
+                uncheckedTrackColor = Color(0x661E2D42),
+                uncheckedBorderColor = Color(0x26388BFD)
             )
 
             Box(modifier = Modifier.fillMaxSize()) {
@@ -407,194 +411,119 @@ class MainActivity : AppCompatActivity() {
                     modifier = Modifier.fillMaxSize()
                 )
 
-                // Панель быстрых переключателей на главном экране
-                Card(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .navigationBarsPadding()
-                        .padding(horizontal = 16.dp, vertical = 20.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color(0xD90B132B)
-                    ),
-                    border = BorderStroke(1.dp, cardBorderColor)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                    ) {
-                        // 1. Поверх всех приложений
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null
-                                ) { toggleOverlay(!currentSettings.isOverlayEnabled) }
-                                .padding(vertical = 4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = stringResource(R.string.settings_overlay_label),
-                                color = Color.White,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium,
-                                modifier = Modifier.weight(1f).padding(end = 8.dp)
-                            )
-                            Switch(
-                                checked = currentSettings.isOverlayEnabled,
-                                onCheckedChange = { toggleOverlay(it) },
-                                colors = switchColors
-                            )
-                        }
-
-                        HorizontalDivider(color = Color(0x1AFFFFFF), thickness = 0.5.dp)
-
-                        // 2. Снег на экране блокировки
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null
-                                ) { openLiveWallpaperChooser() }
-                                .padding(vertical = 4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = stringResource(R.string.wallpaper_service_label),
-                                color = Color.White,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium,
-                                modifier = Modifier.weight(1f).padding(end = 8.dp)
-                            )
-                            Switch(
-                                checked = isWallpaperActive,
-                                onCheckedChange = { openLiveWallpaperChooser() },
-                                colors = switchColors
-                            )
-                        }
-
-                        HorizontalDivider(color = Color(0x1AFFFFFF), thickness = 0.5.dp)
-
-                        // 3. Сугроб внизу экрана
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null
-                                ) {
-                                    val updated = currentSettings.copy(isSnowbankEnabled = !currentSettings.isSnowbankEnabled)
-                                    snowView.applySettings(updated)
-                                    coroutineScope.launch {
-                                        settingsRepository.saveSettings(updated)
-                                    }
-                                }
-                                .padding(vertical = 4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = stringResource(R.string.settings_snowbank_enabled_label),
-                                color = Color.White,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium,
-                                modifier = Modifier.weight(1f).padding(end = 8.dp)
-                            )
-                            Switch(
-                                checked = currentSettings.isSnowbankEnabled,
-                                onCheckedChange = { enabled ->
-                                    val updated = currentSettings.copy(isSnowbankEnabled = enabled)
-                                    snowView.applySettings(updated)
-                                    coroutineScope.launch {
-                                        settingsRepository.saveSettings(updated)
-                                    }
-                                },
-                                colors = switchColors
-                            )
-                        }
-
-                        HorizontalDivider(color = Color(0x1AFFFFFF), thickness = 0.5.dp)
-
-                        // 4. Блёстки
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null
-                                ) {
-                                    val updated = currentSettings.copy(isSparklesEnabled = !currentSettings.isSparklesEnabled)
-                                    snowView.applySettings(updated)
-                                    coroutineScope.launch {
-                                        settingsRepository.saveSettings(updated)
-                                    }
-                                }
-                                .padding(vertical = 4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = stringResource(R.string.settings_sparkles_label),
-                                color = Color.White,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium,
-                                modifier = Modifier.weight(1f).padding(end = 8.dp)
-                            )
-                            Switch(
-                                checked = currentSettings.isSparklesEnabled,
-                                onCheckedChange = { enabled ->
-                                    val updated = currentSettings.copy(isSparklesEnabled = enabled)
-                                    snowView.applySettings(updated)
-                                    coroutineScope.launch {
-                                        settingsRepository.saveSettings(updated)
-                                    }
-                                },
-                                colors = switchColors
-                            )
-                        }
-                    }
-                }
-
-                // Кнопки управления в верхнем правом углу
-                Row(
+                // Верхний контейнер: кнопки управления и быстрые переключатели
+                Column(
                     modifier = Modifier
                         .statusBarsPadding()
-                        .align(Alignment.TopEnd)
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
-                    // Кнопка быстрого выключения приложения и снегопада
-                    IconButton(
-                        onClick = stopAndExitApp,
-                        modifier = Modifier
-                            .size(48.dp)
-                            .background(Color(0x99DC2626), CircleShape)
+                    // Кнопки управления в верхнем правом углу
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_power),
-                            contentDescription = stringResource(R.string.cd_exit_app),
-                            tint = Color.White
-                        )
+                        // Кнопка быстрого выключения приложения с неоновым кольцом
+                        IconButton(
+                            onClick = stopAndExitApp,
+                            modifier = Modifier
+                                .size(46.dp)
+                                .background(Color(0x33102A4A), CircleShape)
+                                .border(1.5.dp, Color(0x99388BFD), CircleShape)
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_power),
+                                contentDescription = stringResource(R.string.cd_exit_app),
+                                tint = Color.White,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        // Кнопка с иконкой шестерёнки для вызова настроек
+                        IconButton(
+                            onClick = { isSettingsOpen = true },
+                            modifier = Modifier
+                                .size(46.dp)
+                                .background(Color(0x33102A4A), CircleShape)
+                                .border(1.dp, Color(0x40388BFD), CircleShape)
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_settings),
+                                contentDescription = stringResource(R.string.cd_open_settings),
+                                tint = Color.White,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
                     }
 
-                    // Кнопка с иконкой шестерёнки для вызова настроек
-                    IconButton(
-                        onClick = { isSettingsOpen = true },
-                        modifier = Modifier
-                            .size(48.dp)
-                            .background(Color(0x660F172A), CircleShape)
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // 4 строки переключателей в стиле pill (капсулы)
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_settings),
-                            contentDescription = stringResource(R.string.cd_open_settings),
-                            tint = Color.White
+                        // 1. Поверх всех приложений
+                        QuickControlPill(
+                            iconRes = R.drawable.ic_layers,
+                            title = stringResource(R.string.settings_overlay_label),
+                            isChecked = currentSettings.isOverlayEnabled,
+                            onCheckedChange = { toggleOverlay(it) },
+                            pillBgColor = pillBgColor,
+                            pillBorderColor = pillBorderColor,
+                            pillDividerColor = pillDividerColor,
+                            switchColors = pillSwitchColors
+                        )
+
+                        // 2. Снег на экране блокировки
+                        QuickControlPill(
+                            iconRes = R.drawable.ic_snowflake_crystal,
+                            title = stringResource(R.string.wallpaper_service_label),
+                            isChecked = isWallpaperActive,
+                            onCheckedChange = { openLiveWallpaperChooser() },
+                            pillBgColor = pillBgColor,
+                            pillBorderColor = pillBorderColor,
+                            pillDividerColor = pillDividerColor,
+                            switchColors = pillSwitchColors
+                        )
+
+                        // 3. Сугроб внизу экрана
+                        QuickControlPill(
+                            iconRes = R.drawable.ic_snowbank,
+                            title = stringResource(R.string.settings_snowbank_enabled_label),
+                            isChecked = currentSettings.isSnowbankEnabled,
+                            onCheckedChange = { enabled ->
+                                val updated = currentSettings.copy(isSnowbankEnabled = enabled)
+                                snowView.applySettings(updated)
+                                coroutineScope.launch {
+                                    settingsRepository.saveSettings(updated)
+                                }
+                            },
+                            pillBgColor = pillBgColor,
+                            pillBorderColor = pillBorderColor,
+                            pillDividerColor = pillDividerColor,
+                            switchColors = pillSwitchColors
+                        )
+
+                        // 4. Блёстки
+                        QuickControlPill(
+                            iconRes = R.drawable.ic_sparkles,
+                            title = stringResource(R.string.settings_sparkles_label),
+                            isChecked = currentSettings.isSparklesEnabled,
+                            onCheckedChange = { enabled ->
+                                val updated = currentSettings.copy(isSparklesEnabled = enabled)
+                                snowView.applySettings(updated)
+                                coroutineScope.launch {
+                                    settingsRepository.saveSettings(updated)
+                                }
+                            },
+                            pillBgColor = pillBgColor,
+                            pillBorderColor = pillBorderColor,
+                            pillDividerColor = pillDividerColor,
+                            switchColors = pillSwitchColors
                         )
                     }
                 }
@@ -876,6 +805,73 @@ class MainActivity : AppCompatActivity() {
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * Отдельная строка быстрого переключателя на главном экране в стиле полупрозрачной капсулы (pill).
+ */
+@Composable
+private fun QuickControlPill(
+    iconRes: Int,
+    title: String,
+    isChecked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    pillBgColor: Color,
+    pillBorderColor: Color,
+    pillDividerColor: Color,
+    switchColors: SwitchColors,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .background(pillBgColor, CircleShape)
+            .border(1.dp, pillBorderColor, CircleShape)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { onCheckedChange(!isChecked) }
+            .padding(start = 18.dp, end = 12.dp),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                painter = painterResource(id = iconRes),
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(24.dp)
+            )
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Box(
+                modifier = Modifier
+                    .width(1.dp)
+                    .height(24.dp)
+                    .background(pillDividerColor)
+            )
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Text(
+                text = title,
+                color = Color.White,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Normal,
+                modifier = Modifier.weight(1f)
+            )
+
+            Switch(
+                checked = isChecked,
+                onCheckedChange = onCheckedChange,
+                colors = switchColors
+            )
         }
     }
 }
