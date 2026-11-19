@@ -131,6 +131,9 @@ data class SnowSettings(
     val snowflakeStyle: SnowflakeStyle = SnowflakeStyle.FAIRYTALE,
     val colorTheme: SnowColorTheme = SnowColorTheme.WHITE,
     val isGlowEnabled: Boolean = false,
+    val isSparklesEnabled: Boolean = false,
+    val sparklesCount: Int = DEFAULT_SPARKLES_COUNT,
+    val sparklesSize: Float = DEFAULT_SPARKLES_SIZE,
     val snowbankStyle: SnowbankStyle = SnowbankStyle.SMOOTH_HILLS,
     val useDetailedGraphics: Boolean = true,
     val isFirstLaunchCompleted: Boolean = false,
@@ -156,6 +159,14 @@ data class SnowSettings(
         const val MIN_SNOWFLAKE_SIZE = 0.5f
         const val MAX_SNOWFLAKE_SIZE = 2.5f
         const val DEFAULT_SNOWFLAKE_SIZE = 1.0f
+
+        const val MIN_SPARKLES_COUNT = 10
+        const val MAX_SPARKLES_COUNT = 150
+        const val DEFAULT_SPARKLES_COUNT = 40
+
+        const val MIN_SPARKLES_SIZE = 0.5f
+        const val MAX_SPARKLES_SIZE = 2.5f
+        const val DEFAULT_SPARKLES_SIZE = 1.0f
     }
 }
 
@@ -175,6 +186,9 @@ class SnowSettingsRepository(private val context: Context) {
         val SNOWFLAKE_STYLE = stringPreferencesKey("snowflake_style")
         val COLOR_THEME = stringPreferencesKey("color_theme")
         val IS_GLOW_ENABLED = booleanPreferencesKey("is_glow_enabled")
+        val IS_SPARKLES_ENABLED = booleanPreferencesKey("is_sparkles_enabled")
+        val SPARKLES_COUNT = intPreferencesKey("sparkles_count")
+        val SPARKLES_SIZE = floatPreferencesKey("sparkles_size")
         val SNOWBANK_STYLE = stringPreferencesKey("snowbank_style")
         val USE_DETAILED_GRAPHICS = booleanPreferencesKey("use_detailed_graphics")
         val IS_FIRST_LAUNCH_COMPLETED = booleanPreferencesKey("is_first_launch_completed")
@@ -213,6 +227,9 @@ class SnowSettingsRepository(private val context: Context) {
             }
 
             val isGlowEnabled = preferences[PreferencesKeys.IS_GLOW_ENABLED] ?: false
+            val isSparklesEnabled = preferences[PreferencesKeys.IS_SPARKLES_ENABLED] ?: false
+            val sparklesCount = preferences[PreferencesKeys.SPARKLES_COUNT] ?: SnowSettings.DEFAULT_SPARKLES_COUNT
+            val sparklesSize = preferences[PreferencesKeys.SPARKLES_SIZE] ?: SnowSettings.DEFAULT_SPARKLES_SIZE
 
             val bankStyleName = preferences[PreferencesKeys.SNOWBANK_STYLE] ?: SnowbankStyle.SMOOTH_HILLS.name
             val snowbankStyle = try {
@@ -236,6 +253,9 @@ class SnowSettingsRepository(private val context: Context) {
                 snowflakeStyle = snowflakeStyle,
                 colorTheme = colorTheme,
                 isGlowEnabled = isGlowEnabled,
+                isSparklesEnabled = isSparklesEnabled,
+                sparklesCount = sparklesCount,
+                sparklesSize = sparklesSize,
                 snowbankStyle = snowbankStyle,
                 useDetailedGraphics = useDetailedGraphics,
                 isFirstLaunchCompleted = isFirstLaunchCompleted,
@@ -255,6 +275,9 @@ class SnowSettingsRepository(private val context: Context) {
             preferences[PreferencesKeys.SNOWFLAKE_STYLE] = settings.snowflakeStyle.name
             preferences[PreferencesKeys.COLOR_THEME] = settings.colorTheme.name
             preferences[PreferencesKeys.IS_GLOW_ENABLED] = settings.isGlowEnabled
+            preferences[PreferencesKeys.IS_SPARKLES_ENABLED] = settings.isSparklesEnabled
+            preferences[PreferencesKeys.SPARKLES_COUNT] = settings.sparklesCount
+            preferences[PreferencesKeys.SPARKLES_SIZE] = settings.sparklesSize
             preferences[PreferencesKeys.SNOWBANK_STYLE] = settings.snowbankStyle.name
             preferences[PreferencesKeys.USE_DETAILED_GRAPHICS] = settings.useDetailedGraphics
             preferences[PreferencesKeys.IS_FIRST_LAUNCH_COMPLETED] = settings.isFirstLaunchCompleted

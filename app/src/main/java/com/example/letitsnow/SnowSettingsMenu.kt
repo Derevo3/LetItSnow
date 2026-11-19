@@ -140,6 +140,8 @@ fun SnowSettingsMenu(
     var isSnowbankEnabled by remember(settings.isSnowbankEnabled) { mutableStateOf(settings.isSnowbankEnabled) }
     var snowbankHeight by remember(settings.snowbankHeight) { mutableFloatStateOf(settings.snowbankHeight) }
     var snowflakeSize by remember(settings.snowflakeSize) { mutableFloatStateOf(settings.snowflakeSize) }
+    var sparklesCount by remember(settings.sparklesCount) { mutableIntStateOf(settings.sparklesCount) }
+    var sparklesSize by remember(settings.sparklesSize) { mutableFloatStateOf(settings.sparklesSize) }
 
     fun buildCurrentSettings(): SnowSettings {
         return settings.copy(
@@ -147,7 +149,9 @@ fun SnowSettingsMenu(
             intensity = intensity,
             isSnowbankEnabled = isSnowbankEnabled,
             snowbankHeight = snowbankHeight,
-            snowflakeSize = snowflakeSize
+            snowflakeSize = snowflakeSize,
+            sparklesCount = sparklesCount,
+            sparklesSize = sparklesSize
         )
     }
 
@@ -600,6 +604,129 @@ fun SnowSettingsMenu(
                                 uncheckedTrackColor = Color(0xFF334155)
                             )
                         )
+                    }
+
+                    // 3.1. Переключатель «Блёстки»
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0x331E293B), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                            Text(
+                                text = stringResource(R.string.settings_sparkles_label),
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = stringResource(R.string.settings_sparkles_description),
+                                color = Color(0xFF94A3B8),
+                                fontSize = 12.sp
+                            )
+                        }
+                        Switch(
+                            checked = settings.isSparklesEnabled,
+                            onCheckedChange = { enabled ->
+                                val updated = buildCurrentSettings().copy(isSparklesEnabled = enabled)
+                                onSettingsChanged(updated)
+                                onSaveSettings(updated)
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = primaryAccent,
+                                checkedTrackColor = activeTrackColor,
+                                uncheckedThumbColor = Color(0xFF64748B),
+                                uncheckedTrackColor = Color(0xFF334155)
+                            )
+                        )
+                    }
+
+                    // Настройки количества и размера блёсток
+                    AnimatedVisibility(visible = settings.isSparklesEnabled) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color(0x221E293B), RoundedCornerShape(12.dp))
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            // Количество блёсток
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.settings_sparkles_count_label),
+                                        color = Color(0xFFE2E8F0),
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    Text(
+                                        text = sparklesCount.toString(),
+                                        color = primaryAccent,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                Slider(
+                                    value = sparklesCount.toFloat(),
+                                    onValueChange = { newValue ->
+                                        sparklesCount = newValue.roundToInt()
+                                        onSettingsChanged(buildCurrentSettings())
+                                    },
+                                    onValueChangeFinished = {
+                                        onSaveSettings(buildCurrentSettings())
+                                    },
+                                    valueRange = SnowSettings.MIN_SPARKLES_COUNT.toFloat()..SnowSettings.MAX_SPARKLES_COUNT.toFloat(),
+                                    colors = SliderDefaults.colors(
+                                        thumbColor = primaryAccent,
+                                        activeTrackColor = activeTrackColor,
+                                        inactiveTrackColor = Color(0xFF334155)
+                                    )
+                                )
+                            }
+
+                            // Размер блёсток
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.settings_sparkles_size_label),
+                                        color = Color(0xFFE2E8F0),
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    Text(
+                                        text = String.format(Locale.US, "%.1fx", sparklesSize),
+                                        color = primaryAccent,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                Slider(
+                                    value = sparklesSize,
+                                    onValueChange = { newValue ->
+                                        sparklesSize = (newValue * 10).roundToInt() / 10f
+                                        onSettingsChanged(buildCurrentSettings())
+                                    },
+                                    onValueChangeFinished = {
+                                        onSaveSettings(buildCurrentSettings())
+                                    },
+                                    valueRange = SnowSettings.MIN_SPARKLES_SIZE..SnowSettings.MAX_SPARKLES_SIZE,
+                                    colors = SliderDefaults.colors(
+                                        thumbColor = primaryAccent,
+                                        activeTrackColor = activeTrackColor,
+                                        inactiveTrackColor = Color(0xFF334155)
+                                    )
+                                )
+                            }
+                        }
                     }
 
                     // 4. Ползунок размера снежинок

@@ -19,10 +19,14 @@ import java.io.File
 object SnowSimulationEngine {
 
     val snowflakes = ArrayList<Snowflake>(SnowSettings.MAX_INTENSITY)
+    val sparkles = ArrayList<Sparkle>(60)
     val accumulation = SnowAccumulation()
     val snowMask = SnowMask()
 
     private val flakePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+    }
+    private val sparklePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
     }
 
@@ -55,6 +59,7 @@ object SnowSimulationEngine {
 
         if (canvasWidth > 0f && canvasHeight > 0f) {
             adjustSnowflakeCount(settings.intensity)
+            adjustSparkleCount(settings.sparklesCount)
             checkAndUpdateBackground()
         }
     }
@@ -89,6 +94,18 @@ object SnowSimulationEngine {
             }
             adjustSnowflakeCount(currentSettings.intensity)
         }
+
+        if (oldW > 0f && oldH > 0f) {
+            val scaleX = w / oldW
+            val scaleY = h / oldH
+            for (i in 0 until sparkles.size) {
+                val s = sparkles[i]
+                s.x = (s.x * scaleX).coerceIn(0f, w)
+                s.baseX = (s.baseX * scaleX).coerceIn(0f, w)
+                s.y = (s.y * scaleY).coerceIn(0f, h)
+            }
+        }
+        adjustSparkleCount(currentSettings.sparklesCount)
         checkAndUpdateBackground()
     }
 
@@ -114,6 +131,29 @@ object SnowSimulationEngine {
         } else if (snowflakes.size > targetCount) {
             while (snowflakes.size > targetCount) {
                 snowflakes.removeAt(snowflakes.size - 1)
+            }
+        }
+    }
+
+    private fun adjustSparkleCount(targetCount: Int) {
+        if (canvasWidth <= 0f || canvasHeight <= 0f) return
+        if (!currentSettings.isSparklesEnabled) {
+            if (sparkles.isNotEmpty()) {
+                sparkles.clear()
+            }
+            return
+        }
+        val count = targetCount.coerceIn(SnowSettings.MIN_SPARKLES_COUNT, SnowSettings.MAX_SPARKLES_COUNT)
+        if (sparkles.size < count) {
+            val needed = count - sparkles.size
+            repeat(needed) {
+                val sparkle = Sparkle()
+                sparkle.reset(canvasWidth, canvasHeight, density, accumulation)
+                sparkles.add(sparkle)
+            }
+        } else if (sparkles.size > count) {
+            while (sparkles.size > count) {
+                sparkles.removeAt(sparkles.size - 1)
             }
         }
     }
@@ -167,10 +207,23 @@ object SnowSimulationEngine {
         }
 
         accumulation.update(dt, accumMult)
+
+        if (currentSettings.isSparklesEnabled) {
+            adjustSparkleCount(currentSettings.sparklesCount)
+            for (i in 0 until sparkles.size) {
+                val s = sparkles[i]
+                if (s.isDead) {
+                    s.reset(w, h, density, accumulation)
+                }
+                s.update(dt, w, h, density, accumulation)
+            }
+        } else if (sparkles.isNotEmpty()) {
+            sparkles.clear()
+        }
     }
 
     /**
-     * Отрисовывает состояние симуляции (снежинки и сугроб) на переданный Canvas.
+     * Отрисовывает состояние симуляции (снежинки, сугроб и сказочные блёстки) на переданный Canvas.
      */
     @Synchronized
     fun draw(canvas: Canvas) {
@@ -195,6 +248,14 @@ object SnowSimulationEngine {
         // 2. Отрисовка сугроба (слой 2 поверх падающих в него снежинок)
         val activeBankStyle = currentSettings.snowbankStyle
         accumulation.draw(canvas, activeBankStyle, theme)
+
+        // 3. Отрисовка волшебных блёсток (слой 3 поверх сугроба и снежинок)
+        if (currentSettings.isSparklesEnabled && sparkles.isNotEmpty()) {
+            val sSize = currentSettings.sparklesSize
+            for (i in 0 until sparkles.size) {
+                sparkles[i].draw(canvas, sparklePaint, theme, sSize)
+            }
+        }
     }
 
     /**

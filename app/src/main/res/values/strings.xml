@@ -49,6 +49,10 @@
     <string name="settings_style_label">Стиль снежинок</string>
     <string name="settings_glow_label">Сияние</string>
     <string name="settings_glow_description">Нежное сказочное свечение вокруг снежинок</string>
+    <string name="settings_sparkles_label">Блёстки</string>
+    <string name="settings_sparkles_description">Мерцающие искры и волшебные переливы в снегопаде</string>
+    <string name="settings_sparkles_count_label">Количество блёсток</string>
+    <string name="settings_sparkles_size_label">Размер блёсток</string>
     <string name="settings_snowbank_style_label">Стиль сугроба</string>
     <string name="settings_snowflake_size_label">Размер снежинок</string>
     <string name="settings_fall_speed_label">Скорость снегопада</string>

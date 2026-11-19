@@ -111,6 +111,33 @@ class SnowView @JvmOverloads constructor(
         }
 
     /**
+     * Включены ли мерцающие сказочные блёстки.
+     */
+    var isSparklesEnabled: Boolean
+        get() = SnowSimulationEngine.currentSettings.isSparklesEnabled
+        set(value) {
+            SnowSimulationEngine.applySettings(SnowSimulationEngine.currentSettings.copy(isSparklesEnabled = value))
+        }
+
+    /**
+     * Количество мерцающих блёсток на экране.
+     */
+    var sparklesCount: Int
+        get() = SnowSimulationEngine.currentSettings.sparklesCount
+        set(value) {
+            SnowSimulationEngine.applySettings(SnowSimulationEngine.currentSettings.copy(sparklesCount = value))
+        }
+
+    /**
+     * Множитель размера блёсток.
+     */
+    var sparklesSize: Float
+        get() = SnowSimulationEngine.currentSettings.sparklesSize
+        set(value) {
+            SnowSimulationEngine.applySettings(SnowSimulationEngine.currentSettings.copy(sparklesSize = value))
+        }
+
+    /**
      * Выбранный визуальный стиль сугроба.
      */
     var snowbankStyle: SnowbankStyle

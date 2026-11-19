@@ -26,6 +26,9 @@ class ExampleUnitTest {
         assertEquals(SnowflakeStyle.FAIRYTALE, settings.snowflakeStyle)
         assertEquals(SnowColorTheme.WHITE, settings.colorTheme)
         assertFalse(settings.isGlowEnabled)
+        assertFalse(settings.isSparklesEnabled)
+        assertEquals(40, settings.sparklesCount)
+        assertEquals(1.0f, settings.sparklesSize, 0.001f)
         assertEquals(SnowbankStyle.SMOOTH_HILLS, settings.snowbankStyle)
         assertTrue(settings.useDetailedGraphics)
         assertFalse(settings.isFirstLaunchCompleted)
@@ -46,6 +49,12 @@ class ExampleUnitTest {
         assertEquals(0.5f, SnowSettings.MIN_SNOWFLAKE_SIZE, 0.001f)
         assertEquals(2.5f, SnowSettings.MAX_SNOWFLAKE_SIZE, 0.001f)
         assertEquals(1.0f, SnowSettings.DEFAULT_SNOWFLAKE_SIZE, 0.001f)
+        assertEquals(10, SnowSettings.MIN_SPARKLES_COUNT)
+        assertEquals(150, SnowSettings.MAX_SPARKLES_COUNT)
+        assertEquals(40, SnowSettings.DEFAULT_SPARKLES_COUNT)
+        assertEquals(0.5f, SnowSettings.MIN_SPARKLES_SIZE, 0.001f)
+        assertEquals(2.5f, SnowSettings.MAX_SPARKLES_SIZE, 0.001f)
+        assertEquals(1.0f, SnowSettings.DEFAULT_SPARKLES_SIZE, 0.001f)
     }
 
     @Test
@@ -77,5 +86,19 @@ class ExampleUnitTest {
         assertEquals(45, SnowView.FPS_45)
         assertEquals(40, SnowView.FPS_40)
         assertEquals(60, SnowView.DEFAULT_MAX_FPS)
+    }
+
+    @Test
+    fun sparkle_lifecycle_and_reset_areValid() {
+        val sparkle = Sparkle()
+        assertTrue(sparkle.isDead)
+        sparkle.reset(1080f, 1920f, 2.5f)
+        assertFalse(sparkle.isDead)
+        assertTrue(sparkle.maxRadius > 0f)
+        assertTrue(sparkle.maxLife > 0f)
+
+        sparkle.update(0.5f, 1080f, 1920f, 2.5f)
+        assertTrue(sparkle.alpha > 0)
+        assertTrue(sparkle.currentRadius > 0f)
     }
 }
