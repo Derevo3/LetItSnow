@@ -92,7 +92,7 @@ enum class SnowbankStyle(
     @param:StringRes val descriptionRes: Int
 ) {
     SMOOTH_HILLS(
-        "Плавные холмы",
+        "Дюны",
         "Шелковистые природные дюны с мягкими зимними тенями",
         R.string.snowbank_style_smooth_hills_title,
         R.string.snowbank_style_smooth_hills_desc

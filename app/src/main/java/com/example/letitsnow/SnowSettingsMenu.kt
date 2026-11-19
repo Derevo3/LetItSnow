@@ -109,35 +109,8 @@ fun SnowSettingsMenu(
         }
     }
 
-    val openLiveWallpaperChooser = {
-        try {
-            val intent = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER).apply {
-                putExtra(
-                    WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
-                    ComponentName(context, SnowWallpaperService::class.java)
-                )
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(intent)
-        } catch (_: Exception) {
-            try {
-                val fallbackIntent = Intent(WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                context.startActivity(fallbackIntent)
-            } catch (_: Exception) {
-                Toast.makeText(
-                    context,
-                    context.getString(R.string.error_open_wallpaper_chooser),
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-        }
-    }
-
     var fallSpeed by remember(settings.fallSpeed) { mutableFloatStateOf(settings.fallSpeed) }
     var intensity by remember(settings.intensity) { mutableIntStateOf(settings.intensity) }
-    var isSnowbankEnabled by remember(settings.isSnowbankEnabled) { mutableStateOf(settings.isSnowbankEnabled) }
     var snowbankHeight by remember(settings.snowbankHeight) { mutableFloatStateOf(settings.snowbankHeight) }
     var snowflakeSize by remember(settings.snowflakeSize) { mutableFloatStateOf(settings.snowflakeSize) }
     var sparklesCount by remember(settings.sparklesCount) { mutableIntStateOf(settings.sparklesCount) }
@@ -147,7 +120,6 @@ fun SnowSettingsMenu(
         return settings.copy(
             fallSpeed = fallSpeed,
             intensity = intensity,
-            isSnowbankEnabled = isSnowbankEnabled,
             snowbankHeight = snowbankHeight,
             snowflakeSize = snowflakeSize,
             sparklesCount = sparklesCount,
@@ -284,155 +256,16 @@ fun SnowSettingsMenu(
                         )
                     }
 
-                    // Переключатель оверлея поверх всех приложений (на самом верху настроек)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Color(0x331E293B), RoundedCornerShape(12.dp))
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
-                            Text(
-                                text = stringResource(R.string.settings_overlay_label),
-                                color = Color.White,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                text = stringResource(R.string.settings_overlay_description),
-                                color = Color(0xFF94A3B8),
-                                fontSize = 12.sp
-                            )
-                        }
-                        Switch(
-                            checked = settings.isOverlayEnabled,
-                            onCheckedChange = { onToggleOverlay(it) },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = primaryAccent,
-                                checkedTrackColor = activeTrackColor,
-                                uncheckedThumbColor = Color(0xFF64748B),
-                                uncheckedTrackColor = Color(0xFF334155)
-                            )
-                        )
-                    }
-
-                    // Настройка живых обоев для экрана блокировки и рабочего стола
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Color(0x331E293B), RoundedCornerShape(12.dp))
-                            .padding(horizontal = 14.dp, vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = stringResource(R.string.wallpaper_service_label),
-                                    color = Color.White,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                Text(
-                                    text = stringResource(R.string.settings_wallpaper_desc),
-                                    color = Color(0xFF94A3B8),
-                                    fontSize = 12.sp
-                                )
-                            }
-                        }
-                        Button(
-                            onClick = openLiveWallpaperChooser,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = activeBgColor,
-                                contentColor = Color.White
-                            ),
-                            shape = RoundedCornerShape(10.dp)
-                        ) {
-                            Text(
-                                text = stringResource(R.string.settings_wallpaper_btn),
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
-
-                    // Настройка пользовательского фона для экрана блокировки и приложения
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Color(0x331E293B), RoundedCornerShape(12.dp))
-                            .padding(horizontal = 14.dp, vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Column(modifier = Modifier.fillMaxWidth()) {
-                            Text(
-                                text = stringResource(R.string.settings_custom_bg_label),
-                                color = Color.White,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                text = stringResource(R.string.settings_custom_bg_desc),
-                                color = Color(0xFF94A3B8),
-                                fontSize = 12.sp
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = if (settings.customBackgroundPath != null) {
-                                    stringResource(R.string.settings_custom_bg_status_custom)
-                                } else {
-                                    stringResource(R.string.settings_custom_bg_status_default)
-                                },
-                                color = if (settings.customBackgroundPath != null) primaryAccent else Color(0xFF94A3B8),
-                                fontSize = 12.sp,
-                                fontWeight = if (settings.customBackgroundPath != null) FontWeight.Medium else FontWeight.Normal
-                            )
-                        }
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Button(
-                                onClick = { photoPickerLauncher.launch("image/*") },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = activeBgColor,
-                                    contentColor = Color.White
-                                ),
-                                shape = RoundedCornerShape(10.dp)
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.settings_custom_bg_btn_choose),
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-
-                            if (settings.customBackgroundPath != null) {
-                                OutlinedButton(
-                                    onClick = resetCustomBackground,
-                                    colors = ButtonDefaults.outlinedButtonColors(
-                                        contentColor = Color(0xFFEF4444)
-                                    ),
-                                    border = BorderStroke(1.dp, Color(0x66EF4444)),
-                                    shape = RoundedCornerShape(10.dp)
-                                ) {
-                                    Text(
-                                        text = stringResource(R.string.settings_custom_bg_btn_reset),
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                }
-                            }
-                        }
-                    }
+                    // ==========================================
+                    // ГРУППА 1: НАСТРОЙКА СНЕЖИНОК
+                    // ==========================================
+                    Text(
+                        text = stringResource(R.string.settings_group_snowflakes),
+                        color = primaryAccent,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
+                    )
 
                     // 1. Выбор цвета снега и сугробов
                     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -594,44 +427,6 @@ fun SnowSettingsMenu(
                             checked = settings.isGlowEnabled,
                             onCheckedChange = { enabled ->
                                 val updated = buildCurrentSettings().copy(isGlowEnabled = enabled)
-                                onSettingsChanged(updated)
-                                onSaveSettings(updated)
-                            },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = primaryAccent,
-                                checkedTrackColor = activeTrackColor,
-                                uncheckedThumbColor = Color(0xFF64748B),
-                                uncheckedTrackColor = Color(0xFF334155)
-                            )
-                        )
-                    }
-
-                    // 3.1. Переключатель «Блёстки»
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Color(0x331E293B), RoundedCornerShape(12.dp))
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
-                            Text(
-                                text = stringResource(R.string.settings_sparkles_label),
-                                color = Color.White,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                text = stringResource(R.string.settings_sparkles_description),
-                                color = Color(0xFF94A3B8),
-                                fontSize = 12.sp
-                            )
-                        }
-                        Switch(
-                            checked = settings.isSparklesEnabled,
-                            onCheckedChange = { enabled ->
-                                val updated = buildCurrentSettings().copy(isSparklesEnabled = enabled)
                                 onSettingsChanged(updated)
                                 onSaveSettings(updated)
                             },
@@ -840,150 +635,193 @@ fun SnowSettingsMenu(
                         )
                     }
 
-                    // 7. Секция «Сугроб внизу экрана»
-                    Row(
+                    // ==========================================
+                    // ГРУППА 2: НАСТРОЙКА СУГРОБА
+                    // ==========================================
+                    Text(
+                        text = stringResource(R.string.settings_group_snowbank),
+                        color = primaryAccent,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 8.dp, bottom = 2.dp)
+                    )
+
+                    // Выбор стиля сугроба
+                    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = stringResource(R.string.settings_snowbank_style_label),
+                                color = Color(0xFFE2E8F0),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = stringResource(settings.snowbankStyle.titleRes),
+                                color = primaryAccent,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            SnowbankStyle.entries.forEach { style ->
+                                val isSelected = settings.snowbankStyle == style
+                                val btnBg = if (isSelected) activeBgColor else Color(0x331E293B)
+                                val btnBorder = if (isSelected) primaryAccent else Color(0x2264748B)
+
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .background(btnBg, RoundedCornerShape(10.dp))
+                                        .border(1.dp, btnBorder, RoundedCornerShape(10.dp))
+                                        .clickable {
+                                            val updated = buildCurrentSettings().copy(snowbankStyle = style)
+                                            onSettingsChanged(updated)
+                                            onSaveSettings(updated)
+                                        }
+                                        .padding(vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = stringResource(style.titleRes),
+                                        color = if (isSelected) Color.White else Color(0xFFCBD5E1),
+                                        fontSize = 12.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
+
+                        Text(
+                            text = stringResource(settings.snowbankStyle.descriptionRes),
+                            color = Color(0xFF94A3B8),
+                            fontSize = 12.sp
+                        )
+                    }
+
+                    // Ползунок высоты сугроба
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = stringResource(R.string.settings_snowbank_height_label),
+                                color = Color(0xFFE2E8F0),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = "${snowbankHeight.roundToInt()} dp",
+                                color = primaryAccent,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Slider(
+                            value = snowbankHeight,
+                            onValueChange = { newValue ->
+                                snowbankHeight = newValue.roundToInt().toFloat()
+                                onSettingsChanged(buildCurrentSettings())
+                            },
+                            onValueChangeFinished = {
+                                onSaveSettings(buildCurrentSettings())
+                            },
+                            valueRange = SnowSettings.MIN_SNOWBANK_HEIGHT..SnowSettings.MAX_SNOWBANK_HEIGHT,
+                            colors = SliderDefaults.colors(
+                                thumbColor = primaryAccent,
+                                activeTrackColor = activeTrackColor,
+                                inactiveTrackColor = activeTrackColor.copy(alpha = 0.2f)
+                            )
+                        )
+                    }
+
+                    // ==========================================
+                    // ГРУППА 3: ДОПОЛНИТЕЛЬНЫЕ НАСТРОЙКИ
+                    // ==========================================
+                    Text(
+                        text = stringResource(R.string.settings_group_additional),
+                        color = primaryAccent,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 8.dp, bottom = 2.dp)
+                    )
+
+                    // Настройка пользовательского фона для экрана блокировки и приложения
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(Color(0x331E293B), RoundedCornerShape(12.dp))
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
                             Text(
-                                text = stringResource(R.string.settings_snowbank_enabled_label),
+                                text = stringResource(R.string.settings_custom_bg_label),
                                 color = Color.White,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(
-                                text = stringResource(R.string.settings_snowbank_enabled_description),
+                                text = stringResource(R.string.settings_custom_bg_desc),
                                 color = Color(0xFF94A3B8),
                                 fontSize = 12.sp
                             )
-                        }
-                        Switch(
-                            checked = isSnowbankEnabled,
-                            onCheckedChange = { enabled ->
-                                isSnowbankEnabled = enabled
-                                val updated = buildCurrentSettings().copy(isSnowbankEnabled = enabled)
-                                onSettingsChanged(updated)
-                                onSaveSettings(updated)
-                            },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = primaryAccent,
-                                checkedTrackColor = activeTrackColor,
-                                uncheckedThumbColor = Color(0xFF64748B),
-                                uncheckedTrackColor = Color(0xFF334155)
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = if (settings.customBackgroundPath != null) {
+                                    stringResource(R.string.settings_custom_bg_status_custom)
+                                } else {
+                                    stringResource(R.string.settings_custom_bg_status_default)
+                                },
+                                color = if (settings.customBackgroundPath != null) primaryAccent else Color(0xFF94A3B8),
+                                fontSize = 12.sp,
+                                fontWeight = if (settings.customBackgroundPath != null) FontWeight.Medium else FontWeight.Normal
                             )
-                        )
-                    }
+                        }
 
-                    // Настройки стиля и высоты сугроба (отображаются только когда сугроб включен)
-                    AnimatedVisibility(
-                        visible = isSnowbankEnabled,
-                        enter = fadeIn() + slideInVertically(),
-                        exit = fadeOut() + slideOutVertically()
-                    ) {
-                        Column(
+                        Row(
                             modifier = Modifier.fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(14.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            // Выбор стиля сугроба
-                            Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        text = stringResource(R.string.settings_snowbank_style_label),
-                                        color = Color(0xFFE2E8F0),
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                    Text(
-                                        text = stringResource(settings.snowbankStyle.titleRes),
-                                        color = primaryAccent,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    SnowbankStyle.entries.forEach { style ->
-                                        val isSelected = settings.snowbankStyle == style
-                                        val btnBg = if (isSelected) activeBgColor else Color(0x331E293B)
-                                        val btnBorder = if (isSelected) primaryAccent else Color(0x2264748B)
-
-                                        Box(
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .background(btnBg, RoundedCornerShape(10.dp))
-                                                .border(1.dp, btnBorder, RoundedCornerShape(10.dp))
-                                                .clickable {
-                                                    val updated = buildCurrentSettings().copy(snowbankStyle = style)
-                                                    onSettingsChanged(updated)
-                                                    onSaveSettings(updated)
-                                                }
-                                                .padding(vertical = 8.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = stringResource(style.titleRes),
-                                                color = if (isSelected) Color.White else Color(0xFFCBD5E1),
-                                                fontSize = 12.sp,
-                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                                maxLines = 1
-                                            )
-                                        }
-                                    }
-                                }
-
+                            Button(
+                                onClick = { photoPickerLauncher.launch("image/*") },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = activeBgColor,
+                                    contentColor = Color.White
+                                ),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
                                 Text(
-                                    text = stringResource(settings.snowbankStyle.descriptionRes),
-                                    color = Color(0xFF94A3B8),
-                                    fontSize = 12.sp
+                                    text = stringResource(R.string.settings_custom_bg_btn_choose),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold
                                 )
                             }
 
-                            // Ползунок высоты сугроба
-                            Column(modifier = Modifier.fillMaxWidth()) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                            if (settings.customBackgroundPath != null) {
+                                OutlinedButton(
+                                    onClick = resetCustomBackground,
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        contentColor = Color(0xFFEF4444)
+                                    ),
+                                    border = BorderStroke(1.dp, Color(0x66EF4444)),
+                                    shape = RoundedCornerShape(10.dp)
                                 ) {
                                     Text(
-                                        text = stringResource(R.string.settings_snowbank_height_label),
-                                        color = Color(0xFFE2E8F0),
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    Text(
-                                        text = "${snowbankHeight.roundToInt()} dp",
-                                        color = primaryAccent,
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.Bold
+                                        text = stringResource(R.string.settings_custom_bg_btn_reset),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold
                                     )
                                 }
-                                Slider(
-                                    value = snowbankHeight,
-                                    onValueChange = { newValue ->
-                                        snowbankHeight = newValue.roundToInt().toFloat()
-                                        onSettingsChanged(buildCurrentSettings())
-                                    },
-                                    onValueChangeFinished = {
-                                        onSaveSettings(buildCurrentSettings())
-                                    },
-                                    valueRange = SnowSettings.MIN_SNOWBANK_HEIGHT..SnowSettings.MAX_SNOWBANK_HEIGHT,
-                                    colors = SliderDefaults.colors(
-                                        thumbColor = primaryAccent,
-                                        activeTrackColor = activeTrackColor,
-                                        inactiveTrackColor = activeTrackColor.copy(alpha = 0.2f)
-                                    )
-                                )
                             }
                         }
                     }

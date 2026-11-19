@@ -1,6 +1,9 @@
 package com.example.letitsnow
 
 import android.Manifest
+import android.app.Application
+import android.app.WallpaperManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -12,17 +15,25 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.provider.Settings
+import android.view.ViewGroup
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -31,8 +42,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.DisposableEffect
@@ -52,8 +68,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import android.app.Application
-import android.view.ViewGroup
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
@@ -240,6 +254,45 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
+            val checkWallpaperActive = {
+                try {
+                    val wm = WallpaperManager.getInstance(context)
+                    val info = wm.wallpaperInfo
+                    info != null && info.packageName == context.packageName && info.serviceName == SnowWallpaperService::class.java.name
+                } catch (_: Exception) {
+                    false
+                }
+            }
+
+            var isWallpaperActive by remember { mutableStateOf(checkWallpaperActive()) }
+
+            val wallpaperErrorMsg = stringResource(R.string.error_open_wallpaper_chooser)
+            val openLiveWallpaperChooser = {
+                try {
+                    val intent = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER).apply {
+                        putExtra(
+                            WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
+                            ComponentName(context, SnowWallpaperService::class.java)
+                        )
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(intent)
+                } catch (_: Exception) {
+                    try {
+                        val fallbackIntent = Intent(WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(fallbackIntent)
+                    } catch (_: Exception) {
+                        Toast.makeText(
+                            context,
+                            wallpaperErrorMsg,
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            }
+
             // Управление жизненным циклом анимации в фоне/на переднем плане внутри приложения
             DisposableEffect(lifecycleOwner, snowView, shakeDetector) {
                 if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
@@ -281,6 +334,7 @@ class MainActivity : AppCompatActivity() {
                                     }
                                 }
                             }
+                            isWallpaperActive = checkWallpaperActive()
                         }
                         Lifecycle.Event.ON_PAUSE -> {
                             shakeDetector?.stop()
@@ -312,6 +366,31 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
+            val primaryAccent = when (currentSettings.colorTheme) {
+                SnowColorTheme.SCARLET -> Color(0xFFF87171)
+                SnowColorTheme.PINK -> Color(0xFFF472B6)
+                SnowColorTheme.BLACK -> Color(0xFF94A3B8)
+                SnowColorTheme.WHITE -> Color(0xFF93C5FD)
+            }
+            val activeTrackColor = when (currentSettings.colorTheme) {
+                SnowColorTheme.SCARLET -> Color(0xFFEF4444)
+                SnowColorTheme.PINK -> Color(0xFFEC4899)
+                SnowColorTheme.BLACK -> Color(0xFF475569)
+                SnowColorTheme.WHITE -> Color(0xFF3B82F6)
+            }
+            val cardBorderColor = when (currentSettings.colorTheme) {
+                SnowColorTheme.SCARLET -> Color(0x44EF4444)
+                SnowColorTheme.PINK -> Color(0x44EC4899)
+                SnowColorTheme.BLACK -> Color(0x4464748B)
+                SnowColorTheme.WHITE -> Color(0x3360A5FA)
+            }
+            val switchColors = SwitchDefaults.colors(
+                checkedThumbColor = primaryAccent,
+                checkedTrackColor = activeTrackColor,
+                uncheckedThumbColor = Color(0xFF64748B),
+                uncheckedTrackColor = Color(0xFF334155)
+            )
+
             Box(modifier = Modifier.fillMaxSize()) {
                 // Отрисовка снегопада через существующий SnowView и Canvas
                 AndroidView(
@@ -327,6 +406,160 @@ class MainActivity : AppCompatActivity() {
                     },
                     modifier = Modifier.fillMaxSize()
                 )
+
+                // Панель быстрых переключателей на главном экране
+                Card(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 20.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xD90B132B)
+                    ),
+                    border = BorderStroke(1.dp, cardBorderColor)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        // 1. Поверх всех приложений
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null
+                                ) { toggleOverlay(!currentSettings.isOverlayEnabled) }
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = stringResource(R.string.settings_overlay_label),
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.weight(1f).padding(end = 8.dp)
+                            )
+                            Switch(
+                                checked = currentSettings.isOverlayEnabled,
+                                onCheckedChange = { toggleOverlay(it) },
+                                colors = switchColors
+                            )
+                        }
+
+                        HorizontalDivider(color = Color(0x1AFFFFFF), thickness = 0.5.dp)
+
+                        // 2. Снег на экране блокировки
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null
+                                ) { openLiveWallpaperChooser() }
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = stringResource(R.string.wallpaper_service_label),
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.weight(1f).padding(end = 8.dp)
+                            )
+                            Switch(
+                                checked = isWallpaperActive,
+                                onCheckedChange = { openLiveWallpaperChooser() },
+                                colors = switchColors
+                            )
+                        }
+
+                        HorizontalDivider(color = Color(0x1AFFFFFF), thickness = 0.5.dp)
+
+                        // 3. Сугроб внизу экрана
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null
+                                ) {
+                                    val updated = currentSettings.copy(isSnowbankEnabled = !currentSettings.isSnowbankEnabled)
+                                    snowView.applySettings(updated)
+                                    coroutineScope.launch {
+                                        settingsRepository.saveSettings(updated)
+                                    }
+                                }
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = stringResource(R.string.settings_snowbank_enabled_label),
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.weight(1f).padding(end = 8.dp)
+                            )
+                            Switch(
+                                checked = currentSettings.isSnowbankEnabled,
+                                onCheckedChange = { enabled ->
+                                    val updated = currentSettings.copy(isSnowbankEnabled = enabled)
+                                    snowView.applySettings(updated)
+                                    coroutineScope.launch {
+                                        settingsRepository.saveSettings(updated)
+                                    }
+                                },
+                                colors = switchColors
+                            )
+                        }
+
+                        HorizontalDivider(color = Color(0x1AFFFFFF), thickness = 0.5.dp)
+
+                        // 4. Блёстки
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null
+                                ) {
+                                    val updated = currentSettings.copy(isSparklesEnabled = !currentSettings.isSparklesEnabled)
+                                    snowView.applySettings(updated)
+                                    coroutineScope.launch {
+                                        settingsRepository.saveSettings(updated)
+                                    }
+                                }
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = stringResource(R.string.settings_sparkles_label),
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.weight(1f).padding(end = 8.dp)
+                            )
+                            Switch(
+                                checked = currentSettings.isSparklesEnabled,
+                                onCheckedChange = { enabled ->
+                                    val updated = currentSettings.copy(isSparklesEnabled = enabled)
+                                    snowView.applySettings(updated)
+                                    coroutineScope.launch {
+                                        settingsRepository.saveSettings(updated)
+                                    }
+                                },
+                                colors = switchColors
+                            )
+                        }
+                    }
+                }
 
                 // Кнопки управления в верхнем правом углу
                 Row(

@@ -62,9 +62,14 @@
     <string name="settings_overlay_description">Падающий снег на рабочем столе и поверх других приложений</string>
     <string name="settings_snowbank_enabled_label">Сугроб внизу экрана</string>
     <string name="settings_snowbank_enabled_description">Накопление и отображение снега в нижней части экрана</string>
-    <string name="wallpaper_service_label">Снегопад Let It Snow</string>
-    <string name="wallpaper_service_desc">Живые обои с реалистичным снегопадом и сугробами</string>
-    <string name="settings_wallpaper_btn">Установить на экран блокировки</string>
+    <!-- Settings Menu - Group Headers -->
+    <string name="settings_group_snowflakes">Настройка снежинок</string>
+    <string name="settings_group_snowbank">Настройка сугроба</string>
+    <string name="settings_group_additional">Дополнительные настройки</string>
+
+    <string name="wallpaper_service_label">Снег на экране блокировки</string>
+    <string name="wallpaper_service_desc">Живые обои снегопада для экрана блокировки и рабочего стола</string>
+    <string name="settings_wallpaper_btn">Настроить живые обои</string>
     <string name="settings_wallpaper_desc">Живые обои снегопада для экрана блокировки и рабочего стола</string>
     <string name="error_open_wallpaper_chooser">Не удалось открыть настройки живых обоев</string>
 
@@ -101,7 +106,7 @@
     <string name="snowflake_style_hearts_desc">Кружащиеся в воздухе романтичные сердечки</string>
 
     <!-- Snowbank Styles -->
-    <string name="snowbank_style_smooth_hills_title">Плавные холмы</string>
+    <string name="snowbank_style_smooth_hills_title">Дюны</string>
     <string name="snowbank_style_smooth_hills_desc">Шелковистые природные дюны с мягкими зимними тенями</string>
     <string name="snowbank_style_puffy_clouds_title">Пушистый</string>
     <string name="snowbank_style_puffy_clouds_desc">Мягкие пышные шапки только что выпавшего снега</string>

@@ -21,6 +21,9 @@ android {
 
     buildTypes {
         release {
+            ndk {
+                debugSymbolLevel = "FULL"
+            }
             signingConfig = signingConfigs.getByName("debug")
             optimization {
                 enable = true

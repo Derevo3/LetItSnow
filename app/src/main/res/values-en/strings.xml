@@ -62,9 +62,14 @@
     <string name="settings_overlay_description">Falling snow on home screen and over other apps</string>
     <string name="settings_snowbank_enabled_label">Snowbank at bottom</string>
     <string name="settings_snowbank_enabled_description">Accumulation and display of snow at the bottom of the screen</string>
-    <string name="wallpaper_service_label">Let It Snow Fall</string>
-    <string name="wallpaper_service_desc">Live wallpaper with realistic snowfall and snowbanks</string>
-    <string name="settings_wallpaper_btn">Set on lock screen</string>
+    <!-- Settings Menu - Group Headers -->
+    <string name="settings_group_snowflakes">Snowflakes settings</string>
+    <string name="settings_group_snowbank">Snowbank settings</string>
+    <string name="settings_group_additional">Additional settings</string>
+
+    <string name="wallpaper_service_label">Snow on lock screen</string>
+    <string name="wallpaper_service_desc">Live snowfall wallpaper for lock screen and home screen</string>
+    <string name="settings_wallpaper_btn">Configure live wallpaper</string>
     <string name="settings_wallpaper_desc">Live snowfall wallpaper for lock screen and home screen</string>
     <string name="error_open_wallpaper_chooser">Failed to open live wallpaper settings</string>
 
@@ -101,7 +106,7 @@
     <string name="snowflake_style_hearts_desc">Romantic hearts swirling softly in the air</string>
 
     <!-- Snowbank Styles -->
-    <string name="snowbank_style_smooth_hills_title">Smooth hills</string>
+    <string name="snowbank_style_smooth_hills_title">Dunes</string>
     <string name="snowbank_style_smooth_hills_desc">Silky natural dunes with soft winter shadows</string>
     <string name="snowbank_style_puffy_clouds_title">Puffy</string>
     <string name="snowbank_style_puffy_clouds_desc">Soft lush caps of freshly fallen snow</string>
