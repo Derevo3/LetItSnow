@@ -102,8 +102,8 @@ data class Snowflake(
             return
         }
 
-        // Быстрая отсечка: проверяем коллизию с сугробом только когда снежинка достигает гребня сугроба
-        if (y >= accumulation.minSurfaceY - effRadius * 0.4f) {
+        // Быстрая отсечка: проверяем коллизию с сугробом только когда сугроб включен и снежинка достигает гребня сугроба
+        if (accumulation.isSnowbankEnabled && y >= accumulation.minSurfaceY - effRadius * 0.4f) {
             val surfaceY = accumulation.getSurfaceY(x)
             val contactY = surfaceY - effRadius * 0.4f
 

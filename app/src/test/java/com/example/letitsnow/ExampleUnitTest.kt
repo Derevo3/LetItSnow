@@ -20,6 +20,7 @@ class ExampleUnitTest {
         assertEquals(1.0f, settings.fallSpeed, 0.001f)
         assertEquals(150, settings.intensity)
         assertEquals(1.0f, settings.accumulationRate, 0.001f)
+        assertTrue(settings.isSnowbankEnabled)
         assertEquals(65f, settings.snowbankHeight, 0.001f)
         assertEquals(1.0f, settings.snowflakeSize, 0.001f)
         assertEquals(SnowflakeStyle.FAIRYTALE, settings.snowflakeStyle)

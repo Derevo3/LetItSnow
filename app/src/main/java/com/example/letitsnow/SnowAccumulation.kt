@@ -47,6 +47,25 @@ class SnowAccumulation {
         private set
 
     /**
+     * Включение/отключение отображения и накопления сугроба внизу экрана.
+     */
+    var isSnowbankEnabled: Boolean = true
+        set(value) {
+            if (field != value) {
+                field = value
+                if (!value) {
+                    densities.fill(0f)
+                    minSurfaceY = height + 1000f
+                    columnSurfaceY.fill(height + 1000f)
+                    pixels.fill(0)
+                } else {
+                    populateBaseSnowbank()
+                }
+                markDirty()
+            }
+        }
+
+    /**
      * Базовая высота постоянного сугроба у нижнего края экрана (в dp).
      */
     var baseSnowbankHeightDp: Float = SnowSettings.DEFAULT_SNOWBANK_HEIGHT
@@ -192,6 +211,7 @@ class SnowAccumulation {
 
         val prevCols = cols
         val prevRows = rows
+        val prevCellH = cellH
         val prevDensities = densities
 
         val step = 4.5f * densityScale
@@ -201,7 +221,7 @@ class SnowAccumulation {
         cellW = w / cols
         cellH = h / rows
         invCellW = if (cellW > 0f) 1.0f / cellW else 0f
-        minSurfaceY = h
+        minSurfaceY = if (isSnowbankEnabled) h else h + 1000f
 
         val total = cols * rows
 
@@ -219,23 +239,7 @@ class SnowAccumulation {
         smoothSurfaceY = FloatArray(cols)
         tempSurfaceY = FloatArray(cols)
         columnSurfaceY = FloatArray(cols)
-
-        if (prevDensities.isNotEmpty() && prevCols > 0 && prevRows > 0) {
-            val scaleR = prevRows.toFloat() / rows.toFloat()
-            val scaleC = prevCols.toFloat() / cols.toFloat()
-            for (r in 0 until rows) {
-                val pr = (r * scaleR).toInt().coerceIn(0, prevRows - 1)
-                val rOffset = r * cols
-                val prOffset = pr * prevCols
-                for (c in 0 until cols) {
-                    val pc = (c * scaleC).toInt().coerceIn(0, prevCols - 1)
-                    val oldVal = prevDensities[prOffset + pc]
-                    densities[rOffset + c] = oldVal
-                    surfaceDensities[rOffset + c] = oldVal
-                }
-            }
-            markDirty()
-        }
+        columnSurfaceY.fill(if (isSnowbankEnabled) h else h + 1000f)
 
         // Предварительный расчёт шума (LUT) для исключения вызова sin/cos на каждом кадре
         for (r in 0 until rows) {
@@ -335,19 +339,32 @@ class SnowAccumulation {
         )
         iceBodyPaint.shader = iceBodyShaderNormal
 
-        if (prevDensities.isNotEmpty() && prevCols > 0 && prevRows > 0) {
+        if (isSnowbankEnabled && prevDensities.isNotEmpty() && prevCols > 0 && prevRows > 0 && prevCellH > 0f) {
+            val scaleC = prevCols.toFloat() / cols.toFloat()
             for (r in 0 until rows) {
-                val oldR = (r.toFloat() / rows * prevRows).toInt().coerceIn(0, prevRows - 1)
-                for (c in 0 until cols) {
-                    val oldC = (c.toFloat() / cols * prevCols).toInt().coerceIn(0, prevCols - 1)
-                    val oldIndex = oldR * prevCols + oldC
-                    if (oldIndex in prevDensities.indices) {
-                        densities[r * cols + c] = prevDensities[oldIndex]
+                val yFromBottom = (rows - 1 - r) * cellH
+                val prFromBottom = (yFromBottom / prevCellH).toInt()
+                val pr = prevRows - 1 - prFromBottom
+                val rOffset = r * cols
+
+                if (pr in 0 until prevRows) {
+                    val prOffset = pr * prevCols
+                    for (c in 0 until cols) {
+                        val pc = (c * scaleC).toInt().coerceIn(0, prevCols - 1)
+                        densities[rOffset + c] = prevDensities[prOffset + pc]
                     }
+                }
+
+                val prSurface = (r.toFloat() / rows * prevRows).toInt().coerceIn(0, prevRows - 1)
+                val prSurfaceOffset = prSurface * prevCols
+                for (c in 0 until cols) {
+                    val pc = (c * scaleC).toInt().coerceIn(0, prevCols - 1)
+                    surfaceDensities[rOffset + c] = prevDensities[prSurfaceOffset + pc]
                 }
             }
             ensureBaseSnowbank()
-        } else {
+            markDirty()
+        } else if (isSnowbankEnabled) {
             populateBaseSnowbank()
         }
 
@@ -369,10 +386,12 @@ class SnowAccumulation {
         )
         if (baseSnowbankHeightDp != clamped) {
             baseSnowbankHeightDp = clamped
-            if (initialOfflineSnowAmount <= 0.001f && !isSurfaceCoverActive) {
-                populateBaseSnowbank()
-            } else {
-                ensureBaseSnowbank()
+            if (isSnowbankEnabled) {
+                if (initialOfflineSnowAmount <= 0.001f && !isSurfaceCoverActive) {
+                    populateBaseSnowbank()
+                } else {
+                    ensureBaseSnowbank()
+                }
             }
             updateColumnSurfaceY()
             markDirty()
@@ -387,7 +406,7 @@ class SnowAccumulation {
     }
 
     fun populateBaseSnowbank() {
-        if (cols <= 0 || rows <= 0) return
+        if (!isSnowbankEnabled || cols <= 0 || rows <= 0) return
         densities.fill(0f)
         for (c in 0 until cols) {
             val colBaseRows = getBaseSnowRows(c)
@@ -404,7 +423,7 @@ class SnowAccumulation {
     }
 
     fun ensureBaseSnowbank() {
-        if (cols <= 0 || rows <= 0) return
+        if (!isSnowbankEnabled || cols <= 0 || rows <= 0) return
         for (c in 0 until cols) {
             val colBaseRows = getBaseSnowRows(c)
             for (h in 0 until colBaseRows) {
@@ -427,6 +446,11 @@ class SnowAccumulation {
      * и перерасчет глобальной верхней границы сугроба [minSurfaceY].
      */
     fun updateColumnSurfaceY() {
+        if (!isSnowbankEnabled) {
+            columnSurfaceY.fill(height + 1000f)
+            minSurfaceY = height + 1000f
+            return
+        }
         if (cols <= 0 || rows <= 0) {
             minSurfaceY = height
             return
@@ -453,6 +477,10 @@ class SnowAccumulation {
      * Точечное обновление закэшированного уровня поверхности для одного столбца.
      */
     private fun updateSurfaceForColumn(c: Int) {
+        if (!isSnowbankEnabled) {
+            if (c in 0 until cols) columnSurfaceY[c] = height + 1000f
+            return
+        }
         if (c !in 0 until cols || rows <= 0) return
         var surfY = height
         for (r in 0 until rows) {
@@ -485,7 +513,7 @@ class SnowAccumulation {
     }
 
     fun addSnow(x: Float, flakeRadius: Float, accumulationMultiplier: Float = 1f) {
-        if (isSurfaceCoverActive) return
+        if (!isSnowbankEnabled || isSurfaceCoverActive) return
         if (cols == 0 || rows == 0) return
         val c = (x * invCellW).toInt().coerceIn(0, cols - 1)
 
@@ -753,6 +781,7 @@ class SnowAccumulation {
             drawSurfaceSnowCover(canvas, isBloody)
             return
         }
+        if (!isSnowbankEnabled) return
 
         when (style) {
             SnowbankStyle.CLASSIC -> drawClassic(canvas, isBloody)
@@ -1319,7 +1348,13 @@ class SnowAccumulation {
         isSurfaceCoverActive = false
         surfaceClearedMask.fill(false)
         surfaceDensities.fill(0f)
-        populateBaseSnowbank()
+        if (isSnowbankEnabled) {
+            populateBaseSnowbank()
+        } else {
+            densities.fill(0f)
+            minSurfaceY = height + 1000f
+            columnSurfaceY.fill(height + 1000f)
+        }
         pixels.fill(0)
         initialOfflineSnowAmount = 0f
         initialSurfaceSnowAmount = 0f

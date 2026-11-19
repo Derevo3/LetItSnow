@@ -61,10 +61,23 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class SnowViewModel(application: Application) : AndroidViewModel(application) {
+    val repository = SnowSettingsRepository(application)
+
+    // StateFlow с текущими настройками, сохраняющимися при поворотах экрана
+    val settingsState: StateFlow<SnowSettings> = repository.settingsFlow.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = SnowSettings()
+    )
+
     val snowView: SnowView = SnowView(application).apply {
         isOverlayMode = false
     }
@@ -84,18 +97,16 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        settingsRepository = SnowSettingsRepository(this)
         snowViewModel = ViewModelProvider(this)[SnowViewModel::class.java]
+        settingsRepository = snowViewModel.repository
 
         setContent {
             val context = LocalContext.current
             val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
             val coroutineScope = rememberCoroutineScope()
 
-            // Загрузка сохраненных настроек из DataStore
-            val currentSettings by settingsRepository.settingsFlow.collectAsState(
-                initial = SnowSettings()
-            )
+            // Загрузка сохраненных настроек из ViewModel (сохраняет значение при поворотах экрана)
+            val currentSettings by snowViewModel.settingsState.collectAsState()
 
             // Используем SnowView из ViewModel, чтобы сохранять анимацию при повороте экрана и сворачивании
             val snowView = snowViewModel.snowView

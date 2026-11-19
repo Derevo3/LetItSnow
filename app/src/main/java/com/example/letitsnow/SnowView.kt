@@ -232,6 +232,7 @@ class SnowView @JvmOverloads constructor(
         fallSpeedMultiplier = settings.fallSpeed
         targetSnowflakeCount = settings.intensity
         accumulationRateMultiplier = settings.accumulationRate
+        snowAccumulation.isSnowbankEnabled = settings.isSnowbankEnabled
         snowAccumulation.setBaseSnowbankHeight(settings.snowbankHeight)
         snowflakeSizeMultiplier = settings.snowflakeSize
         snowflakeStyle = settings.snowflakeStyle

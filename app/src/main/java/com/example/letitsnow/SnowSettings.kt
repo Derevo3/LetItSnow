@@ -107,6 +107,7 @@ data class SnowSettings(
     val intensity: Int = DEFAULT_INTENSITY,
     val accumulationRate: Float = DEFAULT_ACCUMULATION_RATE,
     val isOverlayEnabled: Boolean = false,
+    val isSnowbankEnabled: Boolean = true,
     val snowbankHeight: Float = DEFAULT_SNOWBANK_HEIGHT,
     val snowflakeSize: Float = DEFAULT_SNOWFLAKE_SIZE,
     val snowflakeStyle: SnowflakeStyle = SnowflakeStyle.FAIRYTALE,
@@ -149,6 +150,7 @@ class SnowSettingsRepository(private val context: Context) {
         val INTENSITY = intPreferencesKey("intensity")
         val ACCUMULATION_RATE = floatPreferencesKey("accumulation_rate")
         val IS_OVERLAY_ENABLED = booleanPreferencesKey("is_overlay_enabled")
+        val IS_SNOWBANK_ENABLED = booleanPreferencesKey("is_snowbank_enabled")
         val SNOWBANK_HEIGHT = floatPreferencesKey("snowbank_height")
         val SNOWFLAKE_SIZE = floatPreferencesKey("snowflake_size")
         val SNOWFLAKE_STYLE = stringPreferencesKey("snowflake_style")
@@ -172,6 +174,7 @@ class SnowSettingsRepository(private val context: Context) {
             val intensity = preferences[PreferencesKeys.INTENSITY] ?: SnowSettings.DEFAULT_INTENSITY
             val accumulationRate = preferences[PreferencesKeys.ACCUMULATION_RATE] ?: SnowSettings.DEFAULT_ACCUMULATION_RATE
             val isOverlayEnabled = preferences[PreferencesKeys.IS_OVERLAY_ENABLED] ?: false
+            val isSnowbankEnabled = preferences[PreferencesKeys.IS_SNOWBANK_ENABLED] ?: true
             val snowbankHeight = preferences[PreferencesKeys.SNOWBANK_HEIGHT] ?: SnowSettings.DEFAULT_SNOWBANK_HEIGHT
             val snowflakeSize = preferences[PreferencesKeys.SNOWFLAKE_SIZE] ?: SnowSettings.DEFAULT_SNOWFLAKE_SIZE
 
@@ -206,6 +209,7 @@ class SnowSettingsRepository(private val context: Context) {
                 intensity = intensity,
                 accumulationRate = accumulationRate,
                 isOverlayEnabled = isOverlayEnabled,
+                isSnowbankEnabled = isSnowbankEnabled,
                 snowbankHeight = snowbankHeight,
                 snowflakeSize = snowflakeSize,
                 snowflakeStyle = snowflakeStyle,
@@ -223,6 +227,7 @@ class SnowSettingsRepository(private val context: Context) {
             preferences[PreferencesKeys.INTENSITY] = settings.intensity
             preferences[PreferencesKeys.ACCUMULATION_RATE] = settings.accumulationRate
             preferences[PreferencesKeys.IS_OVERLAY_ENABLED] = settings.isOverlayEnabled
+            preferences[PreferencesKeys.IS_SNOWBANK_ENABLED] = settings.isSnowbankEnabled
             preferences[PreferencesKeys.SNOWBANK_HEIGHT] = settings.snowbankHeight
             preferences[PreferencesKeys.SNOWFLAKE_SIZE] = settings.snowflakeSize
             preferences[PreferencesKeys.SNOWFLAKE_STYLE] = settings.snowflakeStyle.name

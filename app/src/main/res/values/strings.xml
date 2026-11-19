@@ -56,6 +56,8 @@
     <string name="settings_snowbank_height_label">Высота сугроба</string>
     <string name="settings_overlay_label">Поверх всех приложений</string>
     <string name="settings_overlay_description">Падающий снег на рабочем столе и поверх других приложений</string>
+    <string name="settings_snowbank_enabled_label">Сугроб внизу экрана</string>
+    <string name="settings_snowbank_enabled_description">Накопление и отображение снега в нижней части экрана</string>
 
     <!-- Settings Menu - Language Selection -->
     <string name="settings_language_label">Язык приложения</string>

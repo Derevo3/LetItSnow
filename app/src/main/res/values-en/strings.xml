@@ -56,6 +56,8 @@
     <string name="settings_snowbank_height_label">Snowbank height</string>
     <string name="settings_overlay_label">Display over other apps</string>
     <string name="settings_overlay_description">Falling snow on home screen and over other apps</string>
+    <string name="settings_snowbank_enabled_label">Snowbank at bottom</string>
+    <string name="settings_snowbank_enabled_description">Accumulation and display of snow at the bottom of the screen</string>
 
     <!-- Settings Menu - Language Selection -->
     <string name="settings_language_label">App language</string>
