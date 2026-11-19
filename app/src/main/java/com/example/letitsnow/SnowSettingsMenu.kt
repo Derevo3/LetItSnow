@@ -1,13 +1,18 @@
 package com.example.letitsnow
 
+import android.app.WallpaperManager
 import android.content.ActivityNotFoundException
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
+import java.io.File
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -104,6 +109,32 @@ fun SnowSettingsMenu(
         }
     }
 
+    val openLiveWallpaperChooser = {
+        try {
+            val intent = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER).apply {
+                putExtra(
+                    WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
+                    ComponentName(context, SnowWallpaperService::class.java)
+                )
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        } catch (_: Exception) {
+            try {
+                val fallbackIntent = Intent(WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(fallbackIntent)
+            } catch (_: Exception) {
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.error_open_wallpaper_chooser),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
     var fallSpeed by remember(settings.fallSpeed) { mutableFloatStateOf(settings.fallSpeed) }
     var intensity by remember(settings.intensity) { mutableIntStateOf(settings.intensity) }
     var isSnowbankEnabled by remember(settings.isSnowbankEnabled) { mutableStateOf(settings.isSnowbankEnabled) }
@@ -118,6 +149,42 @@ fun SnowSettingsMenu(
             snowbankHeight = snowbankHeight,
             snowflakeSize = snowflakeSize
         )
+    }
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            try {
+                val file = File(context.filesDir, "custom_wallpaper_bg.jpg")
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    file.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                val updated = buildCurrentSettings().copy(customBackgroundPath = file.absolutePath)
+                onSettingsChanged(updated)
+                onSaveSettings(updated)
+            } catch (e: Exception) {
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.error_open_link, e.localizedMessage ?: ""),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
+    val resetCustomBackground = {
+        try {
+            val file = File(context.filesDir, "custom_wallpaper_bg.jpg")
+            if (file.exists()) {
+                file.delete()
+            }
+        } catch (_: Exception) { }
+        val updated = buildCurrentSettings().copy(customBackgroundPath = null)
+        onSettingsChanged(updated)
+        onSaveSettings(updated)
     }
 
     val handleDismiss = {
@@ -225,6 +292,122 @@ fun SnowSettingsMenu(
                                 uncheckedTrackColor = Color(0xFF334155)
                             )
                         )
+                    }
+
+                    // Настройка живых обоев для экрана блокировки и рабочего стола
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0x331E293B), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = stringResource(R.string.wallpaper_service_label),
+                                    color = Color.White,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Text(
+                                    text = stringResource(R.string.settings_wallpaper_desc),
+                                    color = Color(0xFF94A3B8),
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+                        Button(
+                            onClick = openLiveWallpaperChooser,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = activeBgColor,
+                                contentColor = Color.White
+                            ),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.settings_wallpaper_btn),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+
+                    // Настройка пользовательского фона для экрана блокировки и приложения
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0x331E293B), RoundedCornerShape(12.dp))
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Text(
+                                text = stringResource(R.string.settings_custom_bg_label),
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = stringResource(R.string.settings_custom_bg_desc),
+                                color = Color(0xFF94A3B8),
+                                fontSize = 12.sp
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = if (settings.customBackgroundPath != null) {
+                                    stringResource(R.string.settings_custom_bg_status_custom)
+                                } else {
+                                    stringResource(R.string.settings_custom_bg_status_default)
+                                },
+                                color = if (settings.customBackgroundPath != null) primaryAccent else Color(0xFF94A3B8),
+                                fontSize = 12.sp,
+                                fontWeight = if (settings.customBackgroundPath != null) FontWeight.Medium else FontWeight.Normal
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = { photoPickerLauncher.launch("image/*") },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = activeBgColor,
+                                    contentColor = Color.White
+                                ),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.settings_custom_bg_btn_choose),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+
+                            if (settings.customBackgroundPath != null) {
+                                OutlinedButton(
+                                    onClick = resetCustomBackground,
+                                    colors = ButtonDefaults.outlinedButtonColors(
+                                        contentColor = Color(0xFFEF4444)
+                                    ),
+                                    border = BorderStroke(1.dp, Color(0x66EF4444)),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.settings_custom_bg_btn_reset),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                            }
+                        }
                     }
 
                     // 1. Выбор цвета снега и сугробов

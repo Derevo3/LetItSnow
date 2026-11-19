@@ -58,6 +58,19 @@
     <string name="settings_overlay_description">Falling snow on home screen and over other apps</string>
     <string name="settings_snowbank_enabled_label">Snowbank at bottom</string>
     <string name="settings_snowbank_enabled_description">Accumulation and display of snow at the bottom of the screen</string>
+    <string name="wallpaper_service_label">Let It Snow Fall</string>
+    <string name="wallpaper_service_desc">Live wallpaper with realistic snowfall and snowbanks</string>
+    <string name="settings_wallpaper_btn">Set on lock screen</string>
+    <string name="settings_wallpaper_desc">Live snowfall wallpaper for lock screen and home screen</string>
+    <string name="error_open_wallpaper_chooser">Failed to open live wallpaper settings</string>
+
+    <!-- Custom Background Image -->
+    <string name="settings_custom_bg_label">Background image</string>
+    <string name="settings_custom_bg_desc">Set your own photo or picture as background for lock screen and app</string>
+    <string name="settings_custom_bg_btn_choose">Choose from gallery</string>
+    <string name="settings_custom_bg_btn_reset">Reset background</string>
+    <string name="settings_custom_bg_status_custom">Custom photo is active</string>
+    <string name="settings_custom_bg_status_default">Default winter gradient</string>
 
     <!-- Settings Menu - Language Selection -->
     <string name="settings_language_label">App language</string>

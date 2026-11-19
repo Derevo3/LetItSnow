@@ -29,6 +29,7 @@ class ExampleUnitTest {
         assertEquals(SnowbankStyle.SMOOTH_HILLS, settings.snowbankStyle)
         assertTrue(settings.useDetailedGraphics)
         assertFalse(settings.isFirstLaunchCompleted)
+        assertNull(settings.customBackgroundPath)
     }
 
     @Test

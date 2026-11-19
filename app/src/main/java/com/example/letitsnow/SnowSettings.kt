@@ -115,7 +115,8 @@ data class SnowSettings(
     val isGlowEnabled: Boolean = false,
     val snowbankStyle: SnowbankStyle = SnowbankStyle.SMOOTH_HILLS,
     val useDetailedGraphics: Boolean = true,
-    val isFirstLaunchCompleted: Boolean = false
+    val isFirstLaunchCompleted: Boolean = false,
+    val customBackgroundPath: String? = null
 ) {
     companion object {
         const val MIN_FALL_SPEED = 0.1f
@@ -159,6 +160,7 @@ class SnowSettingsRepository(private val context: Context) {
         val SNOWBANK_STYLE = stringPreferencesKey("snowbank_style")
         val USE_DETAILED_GRAPHICS = booleanPreferencesKey("use_detailed_graphics")
         val IS_FIRST_LAUNCH_COMPLETED = booleanPreferencesKey("is_first_launch_completed")
+        val CUSTOM_BACKGROUND_PATH = stringPreferencesKey("custom_background_path")
     }
 
     val settingsFlow: Flow<SnowSettings> = context.snowDataStore.data
@@ -203,6 +205,7 @@ class SnowSettingsRepository(private val context: Context) {
 
             val useDetailedGraphics = preferences[PreferencesKeys.USE_DETAILED_GRAPHICS] ?: true
             val isFirstLaunchCompleted = preferences[PreferencesKeys.IS_FIRST_LAUNCH_COMPLETED] ?: false
+            val customBackgroundPath = preferences[PreferencesKeys.CUSTOM_BACKGROUND_PATH]
 
             SnowSettings(
                 fallSpeed = fallSpeed,
@@ -217,7 +220,8 @@ class SnowSettingsRepository(private val context: Context) {
                 isGlowEnabled = isGlowEnabled,
                 snowbankStyle = snowbankStyle,
                 useDetailedGraphics = useDetailedGraphics,
-                isFirstLaunchCompleted = isFirstLaunchCompleted
+                isFirstLaunchCompleted = isFirstLaunchCompleted,
+                customBackgroundPath = customBackgroundPath
             )
         }
 
@@ -236,6 +240,11 @@ class SnowSettingsRepository(private val context: Context) {
             preferences[PreferencesKeys.SNOWBANK_STYLE] = settings.snowbankStyle.name
             preferences[PreferencesKeys.USE_DETAILED_GRAPHICS] = settings.useDetailedGraphics
             preferences[PreferencesKeys.IS_FIRST_LAUNCH_COMPLETED] = settings.isFirstLaunchCompleted
+            if (settings.customBackgroundPath != null) {
+                preferences[PreferencesKeys.CUSTOM_BACKGROUND_PATH] = settings.customBackgroundPath
+            } else {
+                preferences.remove(PreferencesKeys.CUSTOM_BACKGROUND_PATH)
+            }
         }
     }
 

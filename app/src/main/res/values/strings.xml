@@ -58,6 +58,19 @@
     <string name="settings_overlay_description">Падающий снег на рабочем столе и поверх других приложений</string>
     <string name="settings_snowbank_enabled_label">Сугроб внизу экрана</string>
     <string name="settings_snowbank_enabled_description">Накопление и отображение снега в нижней части экрана</string>
+    <string name="wallpaper_service_label">Снегопад Let It Snow</string>
+    <string name="wallpaper_service_desc">Живые обои с реалистичным снегопадом и сугробами</string>
+    <string name="settings_wallpaper_btn">Установить на экран блокировки</string>
+    <string name="settings_wallpaper_desc">Живые обои снегопада для экрана блокировки и рабочего стола</string>
+    <string name="error_open_wallpaper_chooser">Не удалось открыть настройки живых обоев</string>
+
+    <!-- Custom Background Image -->
+    <string name="settings_custom_bg_label">Фоновое изображение</string>
+    <string name="settings_custom_bg_desc">Установите своё фото или картинку на фон экрана блокировки и приложения</string>
+    <string name="settings_custom_bg_btn_choose">Выбрать из галереи</string>
+    <string name="settings_custom_bg_btn_reset">Сбросить фон</string>
+    <string name="settings_custom_bg_status_custom">Установлено собственное фото</string>
+    <string name="settings_custom_bg_status_default">Стандартный зимний градиент</string>
 
     <!-- Settings Menu - Language Selection -->
     <string name="settings_language_label">Язык приложения</string>
