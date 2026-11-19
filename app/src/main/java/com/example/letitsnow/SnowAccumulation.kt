@@ -220,6 +220,23 @@ class SnowAccumulation {
         tempSurfaceY = FloatArray(cols)
         columnSurfaceY = FloatArray(cols)
 
+        if (prevDensities.isNotEmpty() && prevCols > 0 && prevRows > 0) {
+            val scaleR = prevRows.toFloat() / rows.toFloat()
+            val scaleC = prevCols.toFloat() / cols.toFloat()
+            for (r in 0 until rows) {
+                val pr = (r * scaleR).toInt().coerceIn(0, prevRows - 1)
+                val rOffset = r * cols
+                val prOffset = pr * prevCols
+                for (c in 0 until cols) {
+                    val pc = (c * scaleC).toInt().coerceIn(0, prevCols - 1)
+                    val oldVal = prevDensities[prOffset + pc]
+                    densities[rOffset + c] = oldVal
+                    surfaceDensities[rOffset + c] = oldVal
+                }
+            }
+            markDirty()
+        }
+
         // Предварительный расчёт шума (LUT) для исключения вызова sin/cos на каждом кадре
         for (r in 0 until rows) {
             val rOffset = r * cols

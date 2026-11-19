@@ -52,23 +52,40 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import android.app.Application
+import android.view.ViewGroup
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.ViewModelProvider
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+
+class SnowViewModel(application: Application) : AndroidViewModel(application) {
+    val snowView: SnowView = SnowView(application).apply {
+        isOverlayMode = false
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        snowView.pause()
+    }
+}
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var settingsRepository: SnowSettingsRepository
+    private lateinit var snowViewModel: SnowViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
         settingsRepository = SnowSettingsRepository(this)
+        snowViewModel = ViewModelProvider(this)[SnowViewModel::class.java]
 
         setContent {
             val context = LocalContext.current
@@ -80,12 +97,8 @@ class MainActivity : AppCompatActivity() {
                 initial = SnowSettings()
             )
 
-            // Создаем и запоминаем SnowView для отображения внутри приложения
-            val snowView = remember {
-                SnowView(context).apply {
-                    isOverlayMode = false
-                }
-            }
+            // Используем SnowView из ViewModel, чтобы сохранять анимацию при повороте экрана и сворачивании
+            val snowView = snowViewModel.snowView
 
             // Применяем настройки к SnowView при их изменении
             LaunchedEffect(currentSettings) {
@@ -287,7 +300,10 @@ class MainActivity : AppCompatActivity() {
             Box(modifier = Modifier.fillMaxSize()) {
                 // Отрисовка снегопада через существующий SnowView и Canvas
                 AndroidView(
-                    factory = { snowView },
+                    factory = {
+                        (snowView.parent as? ViewGroup)?.removeView(snowView)
+                        snowView
+                    },
                     modifier = Modifier.fillMaxSize()
                 )
 

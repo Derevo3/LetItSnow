@@ -128,6 +128,8 @@ class SnowView @JvmOverloads constructor(
         get() = snowAccumulation
 
     private val density: Float = resources.displayMetrics.density
+    private var canvasWidth: Float = 0f
+    private var canvasHeight: Float = 0f
     private val snowflakes = ArrayList<Snowflake>(SnowSettings.MAX_INTENSITY)
     private val snowAccumulation = SnowAccumulation()
     private val snowMask = SnowMask()
@@ -209,9 +211,11 @@ class SnowView @JvmOverloads constructor(
 
         val dm = resources.displayMetrics
         if (dm.widthPixels > 0 && dm.heightPixels > 0) {
-            snowMask.setSize(dm.widthPixels.toFloat(), dm.heightPixels.toFloat(), density)
-            snowAccumulation.setSize(dm.widthPixels.toFloat(), dm.heightPixels.toFloat(), density)
-            initSnowflakes(dm.widthPixels.toFloat(), dm.heightPixels.toFloat())
+            canvasWidth = dm.widthPixels.toFloat()
+            canvasHeight = dm.heightPixels.toFloat()
+            snowMask.setSize(canvasWidth, canvasHeight, density)
+            snowAccumulation.setSize(canvasWidth, canvasHeight, density)
+            initSnowflakes(canvasWidth, canvasHeight)
         }
 
         if (isOverlayMode) {
@@ -243,9 +247,37 @@ class SnowView @JvmOverloads constructor(
      */
     fun updateCanvasSize(w: Float, h: Float) {
         if (w > 0f && h > 0f) {
+            val oldW = canvasWidth
+            val oldH = canvasHeight
+            canvasWidth = w
+            canvasHeight = h
+
             snowMask.setSize(w, h, density)
             snowAccumulation.setSize(w, h, density)
-            initSnowflakes(w, h)
+
+            if (snowflakes.isEmpty() || oldW <= 0f || oldH <= 0f) {
+                initSnowflakes(w, h)
+            } else {
+                val scaleX = w / oldW
+                val scaleY = h / oldH
+                for (i in 0 until snowflakes.size) {
+                    val flake = snowflakes[i]
+                    flake.x = (flake.x * scaleX).coerceIn(0f, w)
+                    flake.baseX = (flake.baseX * scaleX).coerceIn(0f, w)
+                    flake.y = (flake.y * scaleY).coerceIn(-flake.radius * 2, h)
+                }
+                if (snowflakes.size < targetSnowflakeCount) {
+                    repeat(targetSnowflakeCount - snowflakes.size) {
+                        val flake = Snowflake()
+                        flake.reset(w, h, density, isInitial = false)
+                        snowflakes.add(flake)
+                    }
+                } else if (snowflakes.size > targetSnowflakeCount) {
+                    while (snowflakes.size > targetSnowflakeCount) {
+                        snowflakes.removeAt(snowflakes.size - 1)
+                    }
+                }
+            }
             invalidate()
         }
     }
