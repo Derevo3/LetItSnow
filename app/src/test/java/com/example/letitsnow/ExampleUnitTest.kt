@@ -164,4 +164,25 @@ class ExampleUnitTest {
         star.update(3.0f, 1080f, 1920f, 2.5f)
         assertFalse("Star should be inactive after flight completes", star.isActive)
     }
+
+    @Test
+    fun santaSleigh_lifecycle_isCorrect() {
+        val sleigh = SantaSleigh()
+        assertFalse("Sleigh should not be active initially", sleigh.isActive)
+
+        // Advance time by 35 seconds to trigger first spawn (initial timer is 30s)
+        sleigh.update(35.0f, 1080f, 1920f, 2.5f)
+        assertTrue("Sleigh should be active after timer expires", sleigh.isActive)
+
+        // Advance time to complete the flight duration (max duration ~14s)
+        sleigh.update(16.0f, 1080f, 1920f, 2.5f)
+        assertFalse("Sleigh should be inactive after flight completes", sleigh.isActive)
+
+        // Reset test: advance 170 seconds to exceed 100..160s timer
+        sleigh.update(170.0f, 1080f, 1920f, 2.5f)
+        assertTrue(sleigh.isActive)
+        sleigh.reset()
+        assertFalse(sleigh.isActive)
+        assertEquals(0f, sleigh.progress, 0.001f)
+    }
 }

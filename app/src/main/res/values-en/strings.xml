@@ -92,7 +92,7 @@
 
     <!-- Festive & Special Animations -->
     <string name="settings_special_animations_label">Festive effects</string>
-    <string name="settings_special_animations_desc">Christmas shooting star and rare holiday animations</string>
+    <string name="settings_special_animations_desc">Shooting star, Santa\'s sleigh and holiday surprises</string>
 
     <!-- Vignette Settings -->
     <string name="settings_vignette_style_label">Vignette style</string>

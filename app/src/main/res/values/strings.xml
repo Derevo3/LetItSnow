@@ -92,7 +92,7 @@
 
     <!-- Festive & Special Animations -->
     <string name="settings_special_animations_label">Праздничные эффекты</string>
-    <string name="settings_special_animations_desc">Падающая рождественская звезда и редкие праздничные события</string>
+    <string name="settings_special_animations_desc">Падающая звезда, сани Деда Мороза и праздничные сюрпризы</string>
 
     <!-- Vignette Settings -->
     <string name="settings_vignette_style_label">Стиль виньетки</string>

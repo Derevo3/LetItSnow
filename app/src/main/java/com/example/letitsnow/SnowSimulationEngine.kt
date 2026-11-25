@@ -25,6 +25,7 @@ object SnowSimulationEngine {
     val snowMask = SnowMask()
     val vignette = SnowVignette()
     val shootingStar = ShootingStar()
+    val santaSleigh = SantaSleigh()
 
     var resources: Resources? = null
 
@@ -89,6 +90,7 @@ object SnowSimulationEngine {
 
         if (!settings.isSpecialAnimationsEnabled) {
             shootingStar.reset()
+            santaSleigh.reset()
         }
 
         if (canvasWidth > 0f && canvasHeight > 0f) {
@@ -272,6 +274,7 @@ object SnowSimulationEngine {
         // Обновление рождественской падающей звёздочки и праздничных анимаций
         if (currentSettings.isSpecialAnimationsEnabled) {
             shootingStar.update(dt, w, h, density)
+            santaSleigh.update(dt, w, h, density)
         }
     }
 
@@ -283,9 +286,15 @@ object SnowSimulationEngine {
         if (res != null) {
             resources = res
         }
+        val theme = currentSettings.colorTheme
+
+        // 0. Сказочный силуэт Деда Мороза на санях высоко в небе (дальний план за снегопадом)
+        if (currentSettings.isSpecialAnimationsEnabled) {
+            santaSleigh.draw(canvas, density, theme)
+        }
+
         // 1. Отрисовка снежинок (слой 1)
         val isGlow = currentSettings.isGlowEnabled
-        val theme = currentSettings.colorTheme
         val style = currentSettings.snowflakeStyle
         val sizeMult = currentSettings.snowflakeSize
 
