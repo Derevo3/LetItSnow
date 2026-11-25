@@ -58,6 +58,10 @@
     <string name="settings_fall_speed_label">Скорость снегопада</string>
     <string name="settings_intensity_label">Количество снежинок</string>
     <string name="settings_snowbank_height_label">Высота сугроба</string>
+    <string name="settings_snowbank_growth_label">Рост сугроба</string>
+    <string name="settings_snowbank_growth_desc">Сугроб постепенно нарастает от падающих снежинок</string>
+    <string name="settings_shake_to_reset_label">Сброс встряхиванием</string>
+    <string name="settings_shake_to_reset_desc">Встряхните телефон, чтобы вернуть сугроб к базовой высоте</string>
     <string name="settings_overlay_label">Поверх всех приложений</string>
     <string name="settings_overlay_description">Падающий снег на рабочем столе и поверх других приложений</string>
     <string name="settings_snowbank_enabled_label">Сугроб внизу экрана</string>
@@ -65,10 +69,30 @@
     <string name="settings_vignette_enabled_label">Виньетка</string>
     <string name="settings_vignette_enabled_desc">Ледяные морозные узоры по краям экрана</string>
     <!-- Settings Menu - Group Headers -->
+    <string name="settings_group_presets">Быстрые пресеты</string>
     <string name="settings_group_snowflakes">Настройка снежинок</string>
     <string name="settings_group_snowbank">Настройка сугроба</string>
     <string name="settings_group_vignette">Настройка виньетки</string>
+    <string name="settings_group_interactivity">Интерактивность</string>
     <string name="settings_group_additional">Дополнительные настройки</string>
+
+    <!-- Presets -->
+    <string name="preset_new_year_title">Новогодняя ночь</string>
+    <string name="preset_new_year_desc">Гирлянда, сказочные снежинки, мерцающие блёстки и сияние</string>
+    <string name="preset_blizzard_title">Метель</string>
+    <string name="preset_blizzard_desc">Пушистые хлопья, сильный снегопад и ледяной сугроб</string>
+    <string name="preset_romance_title">Романтика</string>
+    <string name="preset_romance_desc">Пастельно-розовый снег, сердечки и медленный темп</string>
+    <string name="preset_winter_evening_title">Зимний вечер</string>
+    <string name="preset_winter_evening_desc">Еловые ветви, шелковистые дюны и классический снегопад</string>
+
+    <!-- Gravity Settings -->
+    <string name="settings_tilt_wind_label">Гравитация и наклон</string>
+    <string name="settings_tilt_wind_desc">Направление снегопада адаптируется под поворот и наклон экрана</string>
+
+    <!-- Festive & Special Animations -->
+    <string name="settings_special_animations_label">Праздничные эффекты</string>
+    <string name="settings_special_animations_desc">Падающая рождественская звезда и редкие праздничные события</string>
 
     <!-- Vignette Settings -->
     <string name="settings_vignette_style_label">Стиль виньетки</string>

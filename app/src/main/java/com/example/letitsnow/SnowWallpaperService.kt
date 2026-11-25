@@ -53,6 +53,7 @@ class SnowWallpaperService : WallpaperService() {
 
         override fun onCreate(surfaceHolder: SurfaceHolder) {
             super.onCreate(surfaceHolder)
+            setTouchEventsEnabled(true)
             // Подписываемся на изменения настроек снегопада
             settingsJob = serviceScope.launch {
                 settingsRepository.settingsFlow.collectLatest { settings ->
@@ -64,6 +65,13 @@ class SnowWallpaperService : WallpaperService() {
 
         override fun onVisibilityChanged(visible: Boolean) {
             super.onVisibilityChanged(visible)
+            if (isVisibleState != visible) {
+                if (visible) {
+                    SnowSensorManager.register(applicationContext)
+                } else {
+                    SnowSensorManager.unregister()
+                }
+            }
             isVisibleState = visible
             if (visible) {
                 scheduleNextFrame()
@@ -175,7 +183,6 @@ class SnowWallpaperService : WallpaperService() {
 
         override fun onTouchEvent(event: MotionEvent) {
             super.onTouchEvent(event)
-            // Позволяет взаимодействовать с сугробом на экране блокировки/рабочем столе при поддержке лаунчером
             val handled = SnowSimulationEngine.snowMask.onTouchEvent(event, SnowSimulationEngine.accumulation)
             if (handled && isVisibleState) {
                 drawFrame()
@@ -183,6 +190,9 @@ class SnowWallpaperService : WallpaperService() {
         }
 
         override fun onSurfaceDestroyed(holder: SurfaceHolder) {
+            if (isVisibleState) {
+                SnowSensorManager.unregister()
+            }
             isVisibleState = false
             choreographer.removeFrameCallback(this)
             isFrameScheduled = false
@@ -190,6 +200,9 @@ class SnowWallpaperService : WallpaperService() {
         }
 
         override fun onDestroy() {
+            if (isVisibleState) {
+                SnowSensorManager.unregister()
+            }
             isVisibleState = false
             choreographer.removeFrameCallback(this)
             isFrameScheduled = false

@@ -431,6 +431,11 @@ class SnowAccumulation {
         markDirty()
     }
 
+    fun resetToBaseSnowbank() {
+        if (!isSnowbankEnabled || cols <= 0 || rows <= 0) return
+        populateBaseSnowbank()
+    }
+
     fun ensureBaseSnowbank() {
         if (!isSnowbankEnabled || cols <= 0 || rows <= 0) return
         for (c in 0 until cols) {

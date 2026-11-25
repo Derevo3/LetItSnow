@@ -58,6 +58,10 @@
     <string name="settings_fall_speed_label">Fall speed</string>
     <string name="settings_intensity_label">Snowflake count</string>
     <string name="settings_snowbank_height_label">Snowbank height</string>
+    <string name="settings_snowbank_growth_label">Snowbank growth</string>
+    <string name="settings_snowbank_growth_desc">Snowbank gradually grows as snowflakes accumulate</string>
+    <string name="settings_shake_to_reset_label">Shake to reset</string>
+    <string name="settings_shake_to_reset_desc">Shake device to reset snowbank to base height</string>
     <string name="settings_overlay_label">Display over other apps</string>
     <string name="settings_overlay_description">Falling snow on home screen and over other apps</string>
     <string name="settings_snowbank_enabled_label">Snowbank at bottom</string>
@@ -65,10 +69,30 @@
     <string name="settings_vignette_enabled_label">Vignette</string>
     <string name="settings_vignette_enabled_desc">Frosty ice patterns along screen edges</string>
     <!-- Settings Menu - Group Headers -->
+    <string name="settings_group_presets">Presets</string>
     <string name="settings_group_snowflakes">Snowflakes settings</string>
     <string name="settings_group_snowbank">Snowbank settings</string>
     <string name="settings_group_vignette">Vignette settings</string>
+    <string name="settings_group_interactivity">Interactivity</string>
     <string name="settings_group_additional">Additional settings</string>
+
+    <!-- Presets -->
+    <string name="preset_new_year_title">New Year\'s Eve</string>
+    <string name="preset_new_year_desc">Garland lights, fairytale snowflakes, sparkles and soft glow</string>
+    <string name="preset_blizzard_title">Snowstorm</string>
+    <string name="preset_blizzard_desc">Fluffy flakes, heavy snowfall and icy snowbank</string>
+    <string name="preset_romance_title">Romance</string>
+    <string name="preset_romance_desc">Pastel pink snow, swirling hearts and calm slow pace</string>
+    <string name="preset_winter_evening_title">Winter Evening</string>
+    <string name="preset_winter_evening_desc">Pine boughs, smooth silky dunes and classic snow</string>
+
+    <!-- Gravity Settings -->
+    <string name="settings_tilt_wind_label">Gravity and tilt</string>
+    <string name="settings_tilt_wind_desc">Snowfall direction adapts to device tilt and orientation</string>
+
+    <!-- Festive & Special Animations -->
+    <string name="settings_special_animations_label">Festive effects</string>
+    <string name="settings_special_animations_desc">Christmas shooting star and rare holiday animations</string>
 
     <!-- Vignette Settings -->
     <string name="settings_vignette_style_label">Vignette style</string>

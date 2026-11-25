@@ -24,6 +24,7 @@ object SnowSimulationEngine {
     val accumulation = SnowAccumulation()
     val snowMask = SnowMask()
     val vignette = SnowVignette()
+    val shootingStar = ShootingStar()
 
     var resources: Resources? = null
 
@@ -52,6 +53,30 @@ object SnowSimulationEngine {
     private var loadedTargetWidth: Int = 0
     private var loadedTargetHeight: Int = 0
 
+    init {
+        SnowSensorManager.onShakeListener = {
+            onShakeDetected()
+        }
+    }
+
+    /**
+     * Сбрасывает наросший сугроб к базовой высоте, выбранной в настройках.
+     */
+    @Synchronized
+    fun resetSnowbank() {
+        accumulation.resetToBaseSnowbank()
+    }
+
+    /**
+     * Обработка жеста встряхивания телефона: сброс сугроба при включенной опции.
+     */
+    @Synchronized
+    fun onShakeDetected() {
+        if (currentSettings.isShakeToResetEnabled && currentSettings.isSnowbankEnabled) {
+            resetSnowbank()
+        }
+    }
+
     /**
      * Применяет новые настройки снегопада (вызывается из DataStore / меню настроек).
      */
@@ -60,6 +85,11 @@ object SnowSimulationEngine {
         currentSettings = settings
         accumulation.isSnowbankEnabled = settings.isSnowbankEnabled
         accumulation.setBaseSnowbankHeight(settings.snowbankHeight)
+        accumulation.allowGrowthAboveBase = settings.isSnowbankGrowthEnabled
+
+        if (!settings.isSpecialAnimationsEnabled) {
+            shootingStar.reset()
+        }
 
         if (canvasWidth > 0f && canvasHeight > 0f) {
             adjustSnowflakeCount(settings.intensity)
@@ -111,6 +141,7 @@ object SnowSimulationEngine {
                 s.x = (s.x * scaleX).coerceIn(0f, w)
                 s.baseX = (s.baseX * scaleX).coerceIn(0f, w)
                 s.y = (s.y * scaleY).coerceIn(0f, h)
+                s.baseY = (s.baseY * scaleY).coerceIn(0f, h)
             }
         }
         adjustSparkleCount(currentSettings.sparklesCount)
@@ -156,7 +187,7 @@ object SnowSimulationEngine {
             val needed = count - sparkles.size
             repeat(needed) {
                 val sparkle = Sparkle()
-                sparkle.reset(canvasWidth, canvasHeight, density, accumulation)
+                sparkle.reset(canvasWidth, canvasHeight, density, accumulation, SnowSensorManager.gravityY)
                 sparkles.add(sparkle)
             }
         } else if (sparkles.size > count) {
@@ -193,13 +224,20 @@ object SnowSimulationEngine {
         lastUpdateNanos = frameTimeNanos
 
         adjustSnowflakeCount(currentSettings.intensity)
-        accumulation.allowGrowthAboveBase = !isOverlay
+        accumulation.allowGrowthAboveBase = currentSettings.isSnowbankGrowthEnabled && !isOverlay
 
         val w = canvasWidth
         val h = canvasHeight
         val fallSpeedMult = currentSettings.fallSpeed
         val accumMult = currentSettings.accumulationRate
         val sizeMult = currentSettings.snowflakeSize
+
+        // Направление силы тяжести: единичный вектор (dirX, dirY) с длиной ровно 1.0
+        val (dirX, dirY) = if (currentSettings.isTiltWindEnabled) {
+            Pair(SnowSensorManager.gravityX, SnowSensorManager.gravityY)
+        } else {
+            Pair(0f, 1f)
+        }
 
         for (i in 0 until snowflakes.size) {
             snowflakes[i].update(
@@ -210,7 +248,9 @@ object SnowSimulationEngine {
                 accumulation = accumulation,
                 fallSpeedMultiplier = fallSpeedMult,
                 accumulationMultiplier = accumMult,
-                sizeMultiplier = sizeMult
+                sizeMultiplier = sizeMult,
+                dirX = dirX,
+                dirY = dirY
             )
         }
 
@@ -218,15 +258,20 @@ object SnowSimulationEngine {
 
         if (currentSettings.isSparklesEnabled) {
             adjustSparkleCount(currentSettings.sparklesCount)
-            for (i in 0 until sparkles.size) {
+            for (i in sparkles.size - 1 downTo 0) {
                 val s = sparkles[i]
                 if (s.isDead) {
-                    s.reset(w, h, density, accumulation)
+                    s.reset(w, h, density, accumulation, dirY)
                 }
-                s.update(dt, w, h, density, accumulation)
+                s.update(dt, w, h, density, accumulation, dirX, dirY)
             }
         } else if (sparkles.isNotEmpty()) {
             sparkles.clear()
+        }
+
+        // Обновление рождественской падающей звёздочки и праздничных анимаций
+        if (currentSettings.isSpecialAnimationsEnabled) {
+            shootingStar.update(dt, w, h, density)
         }
     }
 
@@ -268,7 +313,12 @@ object SnowSimulationEngine {
             }
         }
 
-        // 4. Отрисовка морозной виньетки по краям экрана (слой 4)
+        // 4. Отрисовка рождественской падающей звёздочки и праздничных анимаций
+        if (currentSettings.isSpecialAnimationsEnabled) {
+            shootingStar.draw(canvas, density, theme)
+        }
+
+        // 5. Отрисовка морозной виньетки по краям экрана (слой 5)
         if (currentSettings.isVignetteEnabled) {
             val r = res ?: resources
             if (r != null) {
@@ -277,7 +327,8 @@ object SnowSimulationEngine {
                     resources = r,
                     style = currentSettings.vignetteStyle,
                     size = currentSettings.vignetteSize,
-                    theme = theme
+                    theme = theme,
+                    frameTimeNanos = lastUpdateNanos
                 )
             }
         } else {

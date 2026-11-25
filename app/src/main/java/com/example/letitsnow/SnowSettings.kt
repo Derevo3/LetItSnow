@@ -166,6 +166,8 @@ data class SnowSettings(
     val accumulationRate: Float = DEFAULT_ACCUMULATION_RATE,
     val isOverlayEnabled: Boolean = false,
     val isSnowbankEnabled: Boolean = true,
+    val isSnowbankGrowthEnabled: Boolean = true,
+    val isShakeToResetEnabled: Boolean = true,
     val snowbankHeight: Float = DEFAULT_SNOWBANK_HEIGHT,
     val snowflakeSize: Float = DEFAULT_SNOWFLAKE_SIZE,
     val snowflakeStyle: SnowflakeStyle = SnowflakeStyle.FAIRYTALE,
@@ -178,6 +180,8 @@ data class SnowSettings(
     val isVignetteEnabled: Boolean = false,
     val vignetteStyle: VignetteStyle = VignetteStyle.FROST_PATTERNS,
     val vignetteSize: VignetteSize = VignetteSize.MEDIUM,
+    val isTiltWindEnabled: Boolean = true,
+    val isSpecialAnimationsEnabled: Boolean = true,
     val useDetailedGraphics: Boolean = true,
     val isFirstLaunchCompleted: Boolean = false,
     val customBackgroundPath: String? = null
@@ -224,6 +228,8 @@ class SnowSettingsRepository(private val context: Context) {
         val ACCUMULATION_RATE = floatPreferencesKey("accumulation_rate")
         val IS_OVERLAY_ENABLED = booleanPreferencesKey("is_overlay_enabled")
         val IS_SNOWBANK_ENABLED = booleanPreferencesKey("is_snowbank_enabled")
+        val IS_SNOWBANK_GROWTH_ENABLED = booleanPreferencesKey("is_snowbank_growth_enabled")
+        val IS_SHAKE_TO_RESET_ENABLED = booleanPreferencesKey("is_shake_to_reset_enabled")
         val SNOWBANK_HEIGHT = floatPreferencesKey("snowbank_height")
         val SNOWFLAKE_SIZE = floatPreferencesKey("snowflake_size")
         val SNOWFLAKE_STYLE = stringPreferencesKey("snowflake_style")
@@ -236,6 +242,8 @@ class SnowSettingsRepository(private val context: Context) {
         val IS_VIGNETTE_ENABLED = booleanPreferencesKey("is_vignette_enabled")
         val VIGNETTE_STYLE = stringPreferencesKey("vignette_style")
         val VIGNETTE_SIZE = stringPreferencesKey("vignette_size")
+        val IS_TILT_WIND_ENABLED = booleanPreferencesKey("is_tilt_wind_enabled")
+        val IS_SPECIAL_ANIMATIONS_ENABLED = booleanPreferencesKey("is_special_animations_enabled")
         val USE_DETAILED_GRAPHICS = booleanPreferencesKey("use_detailed_graphics")
         val IS_FIRST_LAUNCH_COMPLETED = booleanPreferencesKey("is_first_launch_completed")
         val CUSTOM_BACKGROUND_PATH = stringPreferencesKey("custom_background_path")
@@ -255,6 +263,8 @@ class SnowSettingsRepository(private val context: Context) {
             val accumulationRate = preferences[PreferencesKeys.ACCUMULATION_RATE] ?: SnowSettings.DEFAULT_ACCUMULATION_RATE
             val isOverlayEnabled = preferences[PreferencesKeys.IS_OVERLAY_ENABLED] ?: false
             val isSnowbankEnabled = preferences[PreferencesKeys.IS_SNOWBANK_ENABLED] ?: true
+            val isSnowbankGrowthEnabled = preferences[PreferencesKeys.IS_SNOWBANK_GROWTH_ENABLED] ?: true
+            val isShakeToResetEnabled = preferences[PreferencesKeys.IS_SHAKE_TO_RESET_ENABLED] ?: true
             val snowbankHeight = preferences[PreferencesKeys.SNOWBANK_HEIGHT] ?: SnowSettings.DEFAULT_SNOWBANK_HEIGHT
             val snowflakeSize = preferences[PreferencesKeys.SNOWFLAKE_SIZE] ?: SnowSettings.DEFAULT_SNOWFLAKE_SIZE
 
@@ -298,6 +308,9 @@ class SnowSettingsRepository(private val context: Context) {
                 VignetteSize.MEDIUM
             }
 
+            val isTiltWindEnabled = preferences[PreferencesKeys.IS_TILT_WIND_ENABLED] ?: true
+            val isSpecialAnimationsEnabled = preferences[PreferencesKeys.IS_SPECIAL_ANIMATIONS_ENABLED] ?: true
+
             val useDetailedGraphics = preferences[PreferencesKeys.USE_DETAILED_GRAPHICS] ?: true
             val isFirstLaunchCompleted = preferences[PreferencesKeys.IS_FIRST_LAUNCH_COMPLETED] ?: false
             val customBackgroundPath = preferences[PreferencesKeys.CUSTOM_BACKGROUND_PATH]
@@ -308,6 +321,8 @@ class SnowSettingsRepository(private val context: Context) {
                 accumulationRate = accumulationRate,
                 isOverlayEnabled = isOverlayEnabled,
                 isSnowbankEnabled = isSnowbankEnabled,
+                isSnowbankGrowthEnabled = isSnowbankGrowthEnabled,
+                isShakeToResetEnabled = isShakeToResetEnabled,
                 snowbankHeight = snowbankHeight,
                 snowflakeSize = snowflakeSize,
                 snowflakeStyle = snowflakeStyle,
@@ -320,6 +335,8 @@ class SnowSettingsRepository(private val context: Context) {
                 isVignetteEnabled = isVignetteEnabled,
                 vignetteStyle = vignetteStyle,
                 vignetteSize = vignetteSize,
+                isTiltWindEnabled = isTiltWindEnabled,
+                isSpecialAnimationsEnabled = isSpecialAnimationsEnabled,
                 useDetailedGraphics = useDetailedGraphics,
                 isFirstLaunchCompleted = isFirstLaunchCompleted,
                 customBackgroundPath = customBackgroundPath
@@ -333,6 +350,8 @@ class SnowSettingsRepository(private val context: Context) {
             preferences[PreferencesKeys.ACCUMULATION_RATE] = settings.accumulationRate
             preferences[PreferencesKeys.IS_OVERLAY_ENABLED] = settings.isOverlayEnabled
             preferences[PreferencesKeys.IS_SNOWBANK_ENABLED] = settings.isSnowbankEnabled
+            preferences[PreferencesKeys.IS_SNOWBANK_GROWTH_ENABLED] = settings.isSnowbankGrowthEnabled
+            preferences[PreferencesKeys.IS_SHAKE_TO_RESET_ENABLED] = settings.isShakeToResetEnabled
             preferences[PreferencesKeys.SNOWBANK_HEIGHT] = settings.snowbankHeight
             preferences[PreferencesKeys.SNOWFLAKE_SIZE] = settings.snowflakeSize
             preferences[PreferencesKeys.SNOWFLAKE_STYLE] = settings.snowflakeStyle.name
@@ -345,6 +364,8 @@ class SnowSettingsRepository(private val context: Context) {
             preferences[PreferencesKeys.IS_VIGNETTE_ENABLED] = settings.isVignetteEnabled
             preferences[PreferencesKeys.VIGNETTE_STYLE] = settings.vignetteStyle.name
             preferences[PreferencesKeys.VIGNETTE_SIZE] = settings.vignetteSize.name
+            preferences[PreferencesKeys.IS_TILT_WIND_ENABLED] = settings.isTiltWindEnabled
+            preferences[PreferencesKeys.IS_SPECIAL_ANIMATIONS_ENABLED] = settings.isSpecialAnimationsEnabled
             preferences[PreferencesKeys.IS_FIRST_LAUNCH_COMPLETED] = settings.isFirstLaunchCompleted
             if (settings.customBackgroundPath != null) {
                 preferences[PreferencesKeys.CUSTOM_BACKGROUND_PATH] = settings.customBackgroundPath

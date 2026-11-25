@@ -20,6 +20,7 @@ class Sparkle {
     var x: Float = 0f
     var y: Float = 0f
     var baseX: Float = 0f
+    var baseY: Float = 0f
     var speedY: Float = 0f
 
     var swayRadius: Float = 0f
@@ -51,7 +52,8 @@ class Sparkle {
         width: Float,
         height: Float,
         density: Float,
-        accumulation: SnowAccumulation? = null
+        accumulation: SnowAccumulation? = null,
+        dirY: Float = 1f
     ) {
         if (width <= 0f || height <= 0f) return
 
@@ -69,34 +71,38 @@ class Sparkle {
         swaySpeed = 1.0f + Random.nextFloat() * 1.8f
         swayAngle = Random.nextFloat() * 6.28f
 
-        // ~15% блёсток могут искриться на гребне сугроба, остальные распределяются по всему экрану
-        if (accumulation != null && accumulation.isSnowbankEnabled && Random.nextFloat() < 0.15f) {
+        // ~15% блёсток могут искриться на гребне сугроба (только при стандартном направлении гравитации),
+        // остальные распределяются по всему экрану
+        if (accumulation != null && accumulation.isSnowbankEnabled && dirY > 0.3f && Random.nextFloat() < 0.15f) {
             isOnSnowbank = true
             x = Random.nextFloat() * width
             baseX = x
             val surfaceY = accumulation.getSurfaceY(x)
-            y = surfaceY - (Random.nextFloat() * 4f * density)
+            baseY = surfaceY - (Random.nextFloat() * 4f * density)
+            y = baseY
             speedY = 0f
             maxLife = 0.8f + Random.nextFloat() * 1.0f // на снегу мерцают чуть быстрее
         } else {
             isOnSnowbank = false
             baseX = Random.nextFloat() * width
+            baseY = Random.nextFloat() * height
             x = baseX
-            speedY = (3f + Random.nextFloat() * 9f) * density // медленное невесомое парение
-            // Равномерное распределение по всей высоте и ширине экрана
-            y = Random.nextFloat() * height
+            y = baseY
+            speedY = (4f + Random.nextFloat() * 12f) * density // медленное невесомое парение
         }
     }
 
     /**
-     * Обновление состояния блёстки за шаг времени [dtSec].
+     * Обновление состояния блёстки за шаг времени [dtSec] с учётом направления гравитации ([dirX], [dirY]).
      */
     fun update(
         dtSec: Float,
         width: Float,
         height: Float,
         density: Float,
-        accumulation: SnowAccumulation? = null
+        accumulation: SnowAccumulation? = null,
+        dirX: Float = 0f,
+        dirY: Float = 1f
     ) {
         if (isDead) return
 
@@ -115,17 +121,27 @@ class Sparkle {
         rotation += rotationSpeed * dtSec
 
         if (!isOnSnowbank) {
-            y += speedY * dtSec
-            swayAngle += swaySpeed * dtSec
-            x = baseX + sin(swayAngle) * swayRadius
+            // Движение строго вдоль вектора направления гравитации (dirX, dirY)
+            baseX += dirX * speedY * dtSec
+            baseY += dirY * speedY * dtSec
 
-            if (y - maxRadius > height || x < -25f * density || x > width + 25f * density) {
+            // Естественное покачивание перпендикулярно направлению падения (-dirY, dirX)
+            swayAngle += swaySpeed * dtSec
+            val sway = sin(swayAngle) * swayRadius
+
+            x = baseX - dirY * sway
+            y = baseY + dirX * sway
+
+            val margin = 35f * density
+            if (x < -margin || x > width + margin || y < -margin || y > height + margin) {
                 isDead = true
             }
-        } else if (accumulation != null && accumulation.isSnowbankEnabled) {
+        } else if (accumulation != null && accumulation.isSnowbankEnabled && dirY > 0.3f) {
             // Привязана к динамическому сугробу
             val surfaceY = accumulation.getSurfaceY(x)
             y = surfaceY - 2f * density
+        } else {
+            isDead = true
         }
     }
 

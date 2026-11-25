@@ -122,6 +122,7 @@ fun SnowSettingsMenu(
     var sparklesCount by remember(settings.sparklesCount) { mutableIntStateOf(settings.sparklesCount) }
     var sparklesSize by remember(settings.sparklesSize) { mutableFloatStateOf(settings.sparklesSize) }
 
+    var isPresetsExpanded by rememberSaveable(isOpen) { mutableStateOf(false) }
     var isSnowflakesExpanded by rememberSaveable(isOpen) { mutableStateOf(false) }
     var isSnowbankExpanded by rememberSaveable(isOpen) { mutableStateOf(false) }
     var isVignetteExpanded by rememberSaveable(isOpen) { mutableStateOf(false) }
@@ -136,6 +137,17 @@ fun SnowSettingsMenu(
             sparklesCount = sparklesCount,
             sparklesSize = sparklesSize
         )
+    }
+
+    val applyPreset: (SnowSettings) -> Unit = { preset ->
+        fallSpeed = preset.fallSpeed
+        intensity = preset.intensity
+        snowbankHeight = preset.snowbankHeight
+        snowflakeSize = preset.snowflakeSize
+        sparklesCount = preset.sparklesCount
+        sparklesSize = preset.sparklesSize
+        onSettingsChanged(preset)
+        onSaveSettings(preset)
     }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
@@ -265,6 +277,116 @@ fun SnowSettingsMenu(
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold
                         )
+                    }
+
+                    // ==========================================
+                    // БЫСТРЫЕ ПРЕСЕТЫ
+                    // ==========================================
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        SettingsGroupHeader(
+                            title = stringResource(R.string.settings_group_presets),
+                            isExpanded = isPresetsExpanded,
+                            onToggle = { isPresetsExpanded = !isPresetsExpanded },
+                            primaryAccent = primaryAccent
+                        )
+
+                        AnimatedVisibility(
+                            visible = isPresetsExpanded,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut()
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 12.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                PresetCard(
+                                    title = stringResource(R.string.preset_new_year_title),
+                                    description = stringResource(R.string.preset_new_year_desc),
+                                    onClick = {
+                                        val updated = buildCurrentSettings().copy(
+                                            colorTheme = SnowColorTheme.WHITE,
+                                            snowflakeStyle = SnowflakeStyle.FAIRYTALE,
+                                            intensity = 150,
+                                            fallSpeed = 1.0f,
+                                            snowflakeSize = 1.0f,
+                                            isGlowEnabled = true,
+                                            isSparklesEnabled = true,
+                                            sparklesCount = 35,
+                                            isSnowbankEnabled = true,
+                                            snowbankStyle = SnowbankStyle.SMOOTH_HILLS,
+                                            isVignetteEnabled = true,
+                                            vignetteStyle = VignetteStyle.CHRISTMAS_LIGHTS
+                                        )
+                                        applyPreset(updated)
+                                    }
+                                )
+
+                                PresetCard(
+                                    title = stringResource(R.string.preset_blizzard_title),
+                                    description = stringResource(R.string.preset_blizzard_desc),
+                                    onClick = {
+                                        val updated = buildCurrentSettings().copy(
+                                            colorTheme = SnowColorTheme.WHITE,
+                                            snowflakeStyle = SnowflakeStyle.FLUFFY,
+                                            intensity = 260,
+                                            fallSpeed = 1.8f,
+                                            snowflakeSize = 1.2f,
+                                            isGlowEnabled = false,
+                                            isSparklesEnabled = false,
+                                            isSnowbankEnabled = true,
+                                            snowbankStyle = SnowbankStyle.ICY_SHELF,
+                                            isVignetteEnabled = false
+                                        )
+                                        applyPreset(updated)
+                                    }
+                                )
+
+                                PresetCard(
+                                    title = stringResource(R.string.preset_romance_title),
+                                    description = stringResource(R.string.preset_romance_desc),
+                                    onClick = {
+                                        val updated = buildCurrentSettings().copy(
+                                            colorTheme = SnowColorTheme.PINK,
+                                            snowflakeStyle = SnowflakeStyle.HEARTS,
+                                            intensity = 95,
+                                            fallSpeed = 0.7f,
+                                            snowflakeSize = 1.1f,
+                                            isGlowEnabled = true,
+                                            isSparklesEnabled = true,
+                                            sparklesCount = 25,
+                                            isSnowbankEnabled = true,
+                                            snowbankStyle = SnowbankStyle.PUFFY_CLOUDS,
+                                            isVignetteEnabled = false
+                                        )
+                                        applyPreset(updated)
+                                    }
+                                )
+
+                                PresetCard(
+                                    title = stringResource(R.string.preset_winter_evening_title),
+                                    description = stringResource(R.string.preset_winter_evening_desc),
+                                    onClick = {
+                                        val updated = buildCurrentSettings().copy(
+                                            colorTheme = SnowColorTheme.WHITE,
+                                            snowflakeStyle = SnowflakeStyle.FAIRYTALE,
+                                            intensity = 120,
+                                            fallSpeed = 0.85f,
+                                            snowflakeSize = 1.0f,
+                                            isGlowEnabled = true,
+                                            isSparklesEnabled = true,
+                                            sparklesCount = 20,
+                                            isSnowbankEnabled = true,
+                                            snowbankStyle = SnowbankStyle.SMOOTH_HILLS,
+                                            isVignetteEnabled = true,
+                                            vignetteStyle = VignetteStyle.EVERGREEN
+                                        )
+                                        applyPreset(updated)
+                                    }
+                                )
+                            }
+                        }
                     }
 
                     // ==========================================
@@ -778,6 +900,85 @@ fun SnowSettingsMenu(
                                         )
                                     )
                                 }
+
+                                // Переключатель: Рост сугроба от падающего снега
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(Color(0x331E293B), RoundedCornerShape(12.dp))
+                                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                                        Text(
+                                            text = stringResource(R.string.settings_snowbank_growth_label),
+                                            color = Color.White,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Text(
+                                            text = stringResource(R.string.settings_snowbank_growth_desc),
+                                            color = Color(0xFF94A3B8),
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                    Switch(
+                                        checked = settings.isSnowbankGrowthEnabled,
+                                        onCheckedChange = { enabled ->
+                                            val updated = buildCurrentSettings().copy(isSnowbankGrowthEnabled = enabled)
+                                            onSettingsChanged(updated)
+                                            onSaveSettings(updated)
+                                            if (!enabled) {
+                                                SnowSimulationEngine.resetSnowbank()
+                                            }
+                                        },
+                                        colors = SwitchDefaults.colors(
+                                            checkedThumbColor = primaryAccent,
+                                            checkedTrackColor = activeTrackColor,
+                                            uncheckedThumbColor = Color(0xFF64748B),
+                                            uncheckedTrackColor = Color(0xFF334155)
+                                        )
+                                    )
+                                }
+
+                                // Переключатель: Сброс сугроба встряхиванием
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(Color(0x331E293B), RoundedCornerShape(12.dp))
+                                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                                        Text(
+                                            text = stringResource(R.string.settings_shake_to_reset_label),
+                                            color = Color.White,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Text(
+                                            text = stringResource(R.string.settings_shake_to_reset_desc),
+                                            color = Color(0xFF94A3B8),
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                    Switch(
+                                        checked = settings.isShakeToResetEnabled,
+                                        onCheckedChange = { enabled ->
+                                            val updated = buildCurrentSettings().copy(isShakeToResetEnabled = enabled)
+                                            onSettingsChanged(updated)
+                                            onSaveSettings(updated)
+                                        },
+                                        colors = SwitchDefaults.colors(
+                                            checkedThumbColor = primaryAccent,
+                                            checkedTrackColor = activeTrackColor,
+                                            uncheckedThumbColor = Color(0xFF64748B),
+                                            uncheckedTrackColor = Color(0xFF334155)
+                                        )
+                                    )
+                                }
                             }
                         }
                     }
@@ -924,7 +1125,7 @@ fun SnowSettingsMenu(
                     }
 
                     // ==========================================
-                    // ГРУППА 4: ДОПОЛНИТЕЛЬНЫЕ НАСТРОЙКИ
+                    // ДОПОЛНИТЕЛЬНЫЕ НАСТРОЙКИ
                     // ==========================================
                     Column(modifier = Modifier.fillMaxWidth()) {
                         SettingsGroupHeader(
@@ -945,7 +1146,83 @@ fun SnowSettingsMenu(
                                     .padding(top = 12.dp),
                                 verticalArrangement = Arrangement.spacedBy(14.dp)
                             ) {
-                                // Настройка пользовательского фона для экрана блокировки и приложения
+                                // 1. Гравитация и наклон экрана
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(Color(0x331E293B), RoundedCornerShape(12.dp))
+                                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                                        Text(
+                                            text = stringResource(R.string.settings_tilt_wind_label),
+                                            color = Color.White,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Text(
+                                            text = stringResource(R.string.settings_tilt_wind_desc),
+                                            color = Color(0xFF94A3B8),
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                    Switch(
+                                        checked = settings.isTiltWindEnabled,
+                                        onCheckedChange = { enabled ->
+                                            val updated = buildCurrentSettings().copy(isTiltWindEnabled = enabled)
+                                            onSettingsChanged(updated)
+                                            onSaveSettings(updated)
+                                        },
+                                        colors = SwitchDefaults.colors(
+                                            checkedThumbColor = primaryAccent,
+                                            checkedTrackColor = activeTrackColor,
+                                            uncheckedThumbColor = Color(0xFF64748B),
+                                            uncheckedTrackColor = Color(0xFF334155)
+                                        )
+                                    )
+                                }
+
+                                // 2. Праздничные эффекты (рождественская звезда и особые анимации)
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(Color(0x331E293B), RoundedCornerShape(12.dp))
+                                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                                        Text(
+                                            text = stringResource(R.string.settings_special_animations_label),
+                                            color = Color.White,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Text(
+                                            text = stringResource(R.string.settings_special_animations_desc),
+                                            color = Color(0xFF94A3B8),
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                    Switch(
+                                        checked = settings.isSpecialAnimationsEnabled,
+                                        onCheckedChange = { enabled ->
+                                            val updated = buildCurrentSettings().copy(isSpecialAnimationsEnabled = enabled)
+                                            onSettingsChanged(updated)
+                                            onSaveSettings(updated)
+                                        },
+                                        colors = SwitchDefaults.colors(
+                                            checkedThumbColor = primaryAccent,
+                                            checkedTrackColor = activeTrackColor,
+                                            uncheckedThumbColor = Color(0xFF64748B),
+                                            uncheckedTrackColor = Color(0xFF334155)
+                                        )
+                                    )
+                                }
+
+                                // 3. Настройка пользовательского фона для экрана блокировки и приложения
                                 Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -1017,7 +1294,7 @@ fun SnowSettingsMenu(
                                     }
                                 }
 
-                                // 10. Выбор языка приложения (Per-app language)
+                                // 3. Выбор языка приложения (Per-app language)
                                 Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Text(
                                         text = stringResource(R.string.settings_language_label),
@@ -1200,5 +1477,37 @@ private fun SettingsGroupHeader(
                 .size(20.dp)
                 .rotate(rotation)
         )
+    }
+}
+
+@Composable
+private fun PresetCard(
+    title: String,
+    description: String,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0x331E293B), RoundedCornerShape(12.dp))
+            .border(1.dp, Color(0x2264748B), RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = title,
+                color = Color.White,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = description,
+                color = Color(0xFF94A3B8),
+                fontSize = 12.sp,
+                lineHeight = 16.sp
+            )
+        }
     }
 }

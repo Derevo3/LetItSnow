@@ -79,7 +79,8 @@ class SnowVignette {
         resources: Resources,
         style: VignetteStyle = VignetteStyle.FROST_PATTERNS,
         size: VignetteSize = VignetteSize.MEDIUM,
-        theme: SnowColorTheme = SnowColorTheme.WHITE
+        theme: SnowColorTheme = SnowColorTheme.WHITE,
+        frameTimeNanos: Long = 0L
     ) {
         val targetW = width.toInt()
         val targetH = height.toInt()
@@ -101,6 +102,16 @@ class SnowVignette {
             }
         } else {
             paint.colorFilter = null
+        }
+
+        // Мягкое живое мерцание огоньков для новогодней гирлянды
+        if (style == VignetteStyle.CHRISTMAS_LIGHTS && frameTimeNanos > 0L) {
+            val cycle = (frameTimeNanos / 1_000_000L) % 2400L
+            val angle = (cycle / 2400.0) * 2.0 * Math.PI
+            val pulse = 0.82f + 0.18f * kotlin.math.sin(angle).toFloat()
+            paint.alpha = (pulse * 255f).toInt().coerceIn(180, 255)
+        } else {
+            paint.alpha = 255
         }
 
         cachedBitmap?.let { bmp ->

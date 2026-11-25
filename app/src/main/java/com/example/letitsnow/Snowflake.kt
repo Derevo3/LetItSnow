@@ -53,6 +53,7 @@ data class Snowflake(
 
     /**
      * Физическое обновление положения снежинки за шаг времени [dtSec].
+     * [dirX] и [dirY] — единичный направляющий вектор силы тяжести (длина 1.0).
      */
     fun update(
         dtSec: Float,
@@ -62,28 +63,39 @@ data class Snowflake(
         accumulation: SnowAccumulation,
         fallSpeedMultiplier: Float = 1.0f,
         accumulationMultiplier: Float = 1.0f,
-        sizeMultiplier: Float = 1.0f
+        sizeMultiplier: Float = 1.0f,
+        dirX: Float = 0f,
+        dirY: Float = 1f
     ) {
         if (width <= 0f || height <= 0f) return
 
         if (isLanding) {
             landingProgress += dtSec / LANDING_DURATION
             if (landingProgress >= 1.0f) {
-                reset(width, height, density, isInitial = false)
+                reset(width, height, density, isInitial = false, dirY = dirY)
             }
             return
         }
 
-        val effSpeedMultiplier = (fallSpeedMultiplier * depthSpeedFactor).coerceAtLeast(0.05f)
-        y += speedY * effSpeedMultiplier * dtSec
+        // Фиксированная скорость падения без искусственного ускорения
+        val baseSpeed = speedY * (fallSpeedMultiplier * depthSpeedFactor).coerceAtLeast(0.05f)
 
+        // Движение строго вдоль вектора направления гравитации (dirX, dirY)
+        baseX += dirX * baseSpeed * dtSec
+        y += dirY * baseSpeed * dtSec
+
+        // Естественное покачивание перпендикулярно направлению падения
         angle += swaySpeed * dtSec
         secondaryAngle += secondarySpeed * dtSec
         tiltAngle += tiltSpeed * dtSec
 
         val primarySway = sin(angle) * swayRadius
         val secondarySway = sin(secondaryAngle) * (swayRadius * 0.35f)
-        x = baseX + primarySway + secondarySway
+        val sway = primarySway + secondarySway
+
+        // Вектор перпендикуляра: (-dirY, dirX)
+        x = baseX - dirY * sway
+        val effY = y + dirX * sway
 
         rotation += rotationSpeed * dtSec
 
@@ -91,24 +103,19 @@ data class Snowflake(
 
         // В режиме снежного покрова на горизонтальном экране
         if (accumulation.isSurfaceCoverActive) {
-            if (y - effRadius > height) {
-                reset(width, height, density, isInitial = false)
+            if (effY - effRadius > height || effY + effRadius < 0f || x + effRadius < -30f * density || x - effRadius > width + 30f * density) {
+                reset(width, height, density, isInitial = false, dirY = dirY)
                 return
-            }
-            if (x + effRadius < -30f * density) {
-                baseX += width + 60f * density
-            } else if (x - effRadius > width + 30f * density) {
-                baseX -= width + 60f * density
             }
             return
         }
 
-        // Быстрая отсечка: проверяем коллизию с сугробом только когда сугроб включен и снежинка достигает гребня сугроба
-        if (accumulation.isSnowbankEnabled && y >= accumulation.minSurfaceY - effRadius * 0.4f) {
+        // Коллизия с сугробом у нижнего края экрана (только при движении вниз, dirY > 0.3)
+        if (dirY > 0.3f && accumulation.isSnowbankEnabled && effY >= accumulation.minSurfaceY - effRadius * 0.4f) {
             val surfaceY = accumulation.getSurfaceY(x)
             val contactY = surfaceY - effRadius * 0.4f
 
-            if (y >= contactY) {
+            if (effY >= contactY) {
                 accumulation.addSnow(x, effRadius, accumulationMultiplier)
                 isLanding = true
                 landingProgress = 0f
@@ -117,22 +124,34 @@ data class Snowflake(
             }
         }
 
-        if (y - effRadius > height) {
-            reset(width, height, density, isInitial = false)
-            return
+        // Бесшовный перенос и перерождение при выходе за пределы экрана
+        val margin = 50f * density
+        if (dirY >= 0f) {
+            // Обычное падение вниз: если ушла ниже экрана -> возрождается сверху
+            if (effY - effRadius > height + margin) {
+                reset(width, height, density, isInitial = false, dirY = dirY)
+                return
+            }
+        } else {
+            // Перевёрнутый экран (снег идёт вверх): если ушла выше экрана -> возрождается снизу
+            if (effY + effRadius < -margin) {
+                reset(width, height, density, isInitial = false, dirY = dirY)
+                return
+            }
         }
 
-        if (x + effRadius < -30f * density) {
-            baseX += width + 60f * density
-        } else if (x - effRadius > width + 30f * density) {
-            baseX -= width + 60f * density
+        // Боковой перенос через границы экрана (Wrap-around)
+        if (x + effRadius < -margin) {
+            baseX += width + margin * 2
+        } else if (x - effRadius > width + margin) {
+            baseX -= width + margin * 2
         }
     }
 
     /**
      * Инициализация или перерождение снежинки сверху экрана.
      */
-    fun reset(width: Float, height: Float, density: Float, isInitial: Boolean = false) {
+    fun reset(width: Float, height: Float, density: Float, isInitial: Boolean = false, dirY: Float = 1f) {
         isLanding = false
         landingProgress = 0f
 
@@ -207,8 +226,10 @@ data class Snowflake(
 
         y = if (isInitial) {
             -radius - (Random.nextFloat() * height * 0.75f)
-        } else {
+        } else if (dirY >= 0f) {
             -radius - (Random.nextFloat() * 30f * density)
+        } else {
+            height + radius + (Random.nextFloat() * 30f * density)
         }
     }
 

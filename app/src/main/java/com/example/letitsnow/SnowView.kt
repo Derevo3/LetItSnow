@@ -302,6 +302,7 @@ class SnowView @JvmOverloads constructor(
     fun start() {
         if (!isRunning) {
             isRunning = true
+            SnowSensorManager.register(context)
             lastRenderedFrameTimeNanos = 0L
             postNextFrame()
         }
@@ -309,6 +310,9 @@ class SnowView @JvmOverloads constructor(
     }
 
     fun pause() {
+        if (isRunning) {
+            SnowSensorManager.unregister()
+        }
         isRunning = false
         choreographer.removeFrameCallback(frameCallback)
         isCallbackScheduled = false

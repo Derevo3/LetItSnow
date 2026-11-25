@@ -21,6 +21,8 @@ class ExampleUnitTest {
         assertEquals(150, settings.intensity)
         assertEquals(1.0f, settings.accumulationRate, 0.001f)
         assertTrue(settings.isSnowbankEnabled)
+        assertTrue(settings.isSnowbankGrowthEnabled)
+        assertTrue(settings.isShakeToResetEnabled)
         assertEquals(40f, settings.snowbankHeight, 0.001f)
         assertEquals(1.0f, settings.snowflakeSize, 0.001f)
         assertEquals(SnowflakeStyle.FAIRYTALE, settings.snowflakeStyle)
@@ -33,6 +35,8 @@ class ExampleUnitTest {
         assertFalse(settings.isVignetteEnabled)
         assertEquals(VignetteStyle.FROST_PATTERNS, settings.vignetteStyle)
         assertEquals(VignetteSize.MEDIUM, settings.vignetteSize)
+        assertTrue(settings.isTiltWindEnabled)
+        assertTrue(settings.isSpecialAnimationsEnabled)
         assertTrue(settings.useDetailedGraphics)
         assertFalse(settings.isFirstLaunchCompleted)
         assertNull(settings.customBackgroundPath)
@@ -103,6 +107,18 @@ class ExampleUnitTest {
         sparkle.update(0.5f, 1080f, 1920f, 2.5f)
         assertTrue(sparkle.alpha > 0)
         assertTrue(sparkle.currentRadius > 0f)
+
+        // Test tilt reaction
+        val startBaseX = sparkle.baseX
+        val startBaseY = sparkle.baseY
+        sparkle.speedY = 20f
+        sparkle.swayRadius = 0f // eliminate sway to check pure gravity drift
+        sparkle.isOnSnowbank = false
+
+        // Gravity to the right: dirX = 1, dirY = 0
+        sparkle.update(0.1f, 1080f, 1920f, 2.5f, dirX = 1f, dirY = 0f)
+        assertTrue("Sparkle baseX should increase when tilted right", sparkle.baseX > startBaseX)
+        assertEquals(startBaseY, sparkle.baseY, 0.001f)
     }
 
     @Test
@@ -133,5 +149,19 @@ class ExampleUnitTest {
             R.drawable.evergreen_border,
             SnowVignette.getDrawableRes(VignetteStyle.EVERGREEN)
         )
+    }
+
+    @Test
+    fun shootingStar_lifecycle_isCorrect() {
+        val star = ShootingStar()
+        assertFalse("Star should not be active initially", star.isActive)
+
+        // Advance time by 15 seconds to trigger first spawn (timer is 12s)
+        star.update(15.0f, 1080f, 1920f, 2.5f)
+        assertTrue("Star should be active after timer expires", star.isActive)
+
+        // Advance time to complete the flight duration (max duration ~2.2s)
+        star.update(3.0f, 1080f, 1920f, 2.5f)
+        assertFalse("Star should be inactive after flight completes", star.isActive)
     }
 }
