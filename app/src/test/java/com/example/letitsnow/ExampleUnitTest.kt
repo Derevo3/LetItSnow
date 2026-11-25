@@ -21,7 +21,7 @@ class ExampleUnitTest {
         assertEquals(150, settings.intensity)
         assertEquals(1.0f, settings.accumulationRate, 0.001f)
         assertTrue(settings.isSnowbankEnabled)
-        assertEquals(65f, settings.snowbankHeight, 0.001f)
+        assertEquals(40f, settings.snowbankHeight, 0.001f)
         assertEquals(1.0f, settings.snowflakeSize, 0.001f)
         assertEquals(SnowflakeStyle.FAIRYTALE, settings.snowflakeStyle)
         assertEquals(SnowColorTheme.WHITE, settings.colorTheme)
@@ -30,6 +30,9 @@ class ExampleUnitTest {
         assertEquals(40, settings.sparklesCount)
         assertEquals(1.0f, settings.sparklesSize, 0.001f)
         assertEquals(SnowbankStyle.SMOOTH_HILLS, settings.snowbankStyle)
+        assertFalse(settings.isVignetteEnabled)
+        assertEquals(VignetteStyle.FROST_PATTERNS, settings.vignetteStyle)
+        assertEquals(VignetteSize.MEDIUM, settings.vignetteSize)
         assertTrue(settings.useDetailedGraphics)
         assertFalse(settings.isFirstLaunchCompleted)
         assertNull(settings.customBackgroundPath)
@@ -45,7 +48,7 @@ class ExampleUnitTest {
         assertEquals(3.0f, SnowSettings.MAX_ACCUMULATION_RATE, 0.001f)
         assertEquals(15f, SnowSettings.MIN_SNOWBANK_HEIGHT, 0.001f)
         assertEquals(150f, SnowSettings.MAX_SNOWBANK_HEIGHT, 0.001f)
-        assertEquals(65f, SnowSettings.DEFAULT_SNOWBANK_HEIGHT, 0.001f)
+        assertEquals(40f, SnowSettings.DEFAULT_SNOWBANK_HEIGHT, 0.001f)
         assertEquals(0.5f, SnowSettings.MIN_SNOWFLAKE_SIZE, 0.001f)
         assertEquals(2.5f, SnowSettings.MAX_SNOWFLAKE_SIZE, 0.001f)
         assertEquals(1.0f, SnowSettings.DEFAULT_SNOWFLAKE_SIZE, 0.001f)
@@ -100,5 +103,35 @@ class ExampleUnitTest {
         sparkle.update(0.5f, 1080f, 1920f, 2.5f)
         assertTrue(sparkle.alpha > 0)
         assertTrue(sparkle.currentRadius > 0f)
+    }
+
+    @Test
+    fun vignette_options_and_drawables_areValid() {
+        assertEquals(3, VignetteStyle.entries.size)
+        assertEquals(2, VignetteSize.entries.size)
+
+        assertEquals("Узоры", VignetteStyle.FROST_PATTERNS.title)
+        assertEquals("Гирлянда", VignetteStyle.CHRISTMAS_LIGHTS.title)
+        assertEquals("Ветки ели", VignetteStyle.EVERGREEN.title)
+
+        assertEquals("Маленькая", VignetteSize.SMALL.title)
+        assertEquals("Средняя", VignetteSize.MEDIUM.title)
+
+        assertEquals(
+            R.drawable.frost_patterns_small,
+            SnowVignette.getDrawableRes(VignetteStyle.FROST_PATTERNS, VignetteSize.SMALL)
+        )
+        assertEquals(
+            R.drawable.frost_patterns_medium,
+            SnowVignette.getDrawableRes(VignetteStyle.FROST_PATTERNS, VignetteSize.MEDIUM)
+        )
+        assertEquals(
+            R.drawable.christmas_lights,
+            SnowVignette.getDrawableRes(VignetteStyle.CHRISTMAS_LIGHTS)
+        )
+        assertEquals(
+            R.drawable.evergreen_border,
+            SnowVignette.getDrawableRes(VignetteStyle.EVERGREEN)
+        )
     }
 }

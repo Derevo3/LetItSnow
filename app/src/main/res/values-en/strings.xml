@@ -62,10 +62,25 @@
     <string name="settings_overlay_description">Falling snow on home screen and over other apps</string>
     <string name="settings_snowbank_enabled_label">Snowbank at bottom</string>
     <string name="settings_snowbank_enabled_description">Accumulation and display of snow at the bottom of the screen</string>
+    <string name="settings_vignette_enabled_label">Vignette</string>
+    <string name="settings_vignette_enabled_desc">Frosty ice patterns along screen edges</string>
     <!-- Settings Menu - Group Headers -->
     <string name="settings_group_snowflakes">Snowflakes settings</string>
     <string name="settings_group_snowbank">Snowbank settings</string>
+    <string name="settings_group_vignette">Vignette settings</string>
     <string name="settings_group_additional">Additional settings</string>
+
+    <!-- Vignette Settings -->
+    <string name="settings_vignette_style_label">Vignette style</string>
+    <string name="settings_vignette_size_label">Vignette size</string>
+    <string name="vignette_size_small">Small</string>
+    <string name="vignette_size_medium">Medium</string>
+    <string name="vignette_style_patterns_title">Patterns</string>
+    <string name="vignette_style_patterns_desc">Crystalline frost patterns on glass</string>
+    <string name="vignette_style_lights_title">Garland</string>
+    <string name="vignette_style_lights_desc">Cozy festive holiday lights garland</string>
+    <string name="vignette_style_evergreen_title">Pine boughs</string>
+    <string name="vignette_style_evergreen_desc">Festive evergreen pine boughs</string>
 
     <string name="wallpaper_service_label">Snow on lock screen</string>
     <string name="wallpaper_service_desc">Live snowfall wallpaper for lock screen and home screen</string>

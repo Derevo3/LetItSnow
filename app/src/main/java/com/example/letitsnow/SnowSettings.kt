@@ -118,6 +118,46 @@ enum class SnowbankStyle(
 }
 
 /**
+ * Варианты стиля виньетки по краям экрана.
+ */
+enum class VignetteStyle(
+    val title: String,
+    val description: String,
+    @param:StringRes val titleRes: Int,
+    @param:StringRes val descriptionRes: Int
+) {
+    FROST_PATTERNS(
+        "Узоры",
+        "Морозные узоры на стекле",
+        R.string.vignette_style_patterns_title,
+        R.string.vignette_style_patterns_desc
+    ),
+    CHRISTMAS_LIGHTS(
+        "Гирлянда",
+        "Новогодняя гирлянда",
+        R.string.vignette_style_lights_title,
+        R.string.vignette_style_lights_desc
+    ),
+    EVERGREEN(
+        "Ветки ели",
+        "Хвойные еловые ветви",
+        R.string.vignette_style_evergreen_title,
+        R.string.vignette_style_evergreen_desc
+    )
+}
+
+/**
+ * Варианты размера виньетки по краям экрана.
+ */
+enum class VignetteSize(
+    val title: String,
+    @param:StringRes val titleRes: Int
+) {
+    SMALL("Маленькая", R.string.vignette_size_small),
+    MEDIUM("Средняя", R.string.vignette_size_medium)
+}
+
+/**
  * Модель настроек снегопада.
  */
 data class SnowSettings(
@@ -135,6 +175,9 @@ data class SnowSettings(
     val sparklesCount: Int = DEFAULT_SPARKLES_COUNT,
     val sparklesSize: Float = DEFAULT_SPARKLES_SIZE,
     val snowbankStyle: SnowbankStyle = SnowbankStyle.SMOOTH_HILLS,
+    val isVignetteEnabled: Boolean = false,
+    val vignetteStyle: VignetteStyle = VignetteStyle.FROST_PATTERNS,
+    val vignetteSize: VignetteSize = VignetteSize.MEDIUM,
     val useDetailedGraphics: Boolean = true,
     val isFirstLaunchCompleted: Boolean = false,
     val customBackgroundPath: String? = null
@@ -154,7 +197,7 @@ data class SnowSettings(
 
         const val MIN_SNOWBANK_HEIGHT = 15f
         const val MAX_SNOWBANK_HEIGHT = 150f
-        const val DEFAULT_SNOWBANK_HEIGHT = 65f
+        const val DEFAULT_SNOWBANK_HEIGHT = 40f
 
         const val MIN_SNOWFLAKE_SIZE = 0.5f
         const val MAX_SNOWFLAKE_SIZE = 2.5f
@@ -190,6 +233,9 @@ class SnowSettingsRepository(private val context: Context) {
         val SPARKLES_COUNT = intPreferencesKey("sparkles_count")
         val SPARKLES_SIZE = floatPreferencesKey("sparkles_size")
         val SNOWBANK_STYLE = stringPreferencesKey("snowbank_style")
+        val IS_VIGNETTE_ENABLED = booleanPreferencesKey("is_vignette_enabled")
+        val VIGNETTE_STYLE = stringPreferencesKey("vignette_style")
+        val VIGNETTE_SIZE = stringPreferencesKey("vignette_size")
         val USE_DETAILED_GRAPHICS = booleanPreferencesKey("use_detailed_graphics")
         val IS_FIRST_LAUNCH_COMPLETED = booleanPreferencesKey("is_first_launch_completed")
         val CUSTOM_BACKGROUND_PATH = stringPreferencesKey("custom_background_path")
@@ -238,6 +284,20 @@ class SnowSettingsRepository(private val context: Context) {
                 SnowbankStyle.SMOOTH_HILLS
             }
 
+            val isVignetteEnabled = preferences[PreferencesKeys.IS_VIGNETTE_ENABLED] ?: false
+            val vigStyleName = preferences[PreferencesKeys.VIGNETTE_STYLE] ?: VignetteStyle.FROST_PATTERNS.name
+            val vignetteStyle = try {
+                VignetteStyle.valueOf(vigStyleName)
+            } catch (_: IllegalArgumentException) {
+                VignetteStyle.FROST_PATTERNS
+            }
+            val vigSizeName = preferences[PreferencesKeys.VIGNETTE_SIZE] ?: VignetteSize.MEDIUM.name
+            val vignetteSize = try {
+                VignetteSize.valueOf(vigSizeName)
+            } catch (_: IllegalArgumentException) {
+                VignetteSize.MEDIUM
+            }
+
             val useDetailedGraphics = preferences[PreferencesKeys.USE_DETAILED_GRAPHICS] ?: true
             val isFirstLaunchCompleted = preferences[PreferencesKeys.IS_FIRST_LAUNCH_COMPLETED] ?: false
             val customBackgroundPath = preferences[PreferencesKeys.CUSTOM_BACKGROUND_PATH]
@@ -257,6 +317,9 @@ class SnowSettingsRepository(private val context: Context) {
                 sparklesCount = sparklesCount,
                 sparklesSize = sparklesSize,
                 snowbankStyle = snowbankStyle,
+                isVignetteEnabled = isVignetteEnabled,
+                vignetteStyle = vignetteStyle,
+                vignetteSize = vignetteSize,
                 useDetailedGraphics = useDetailedGraphics,
                 isFirstLaunchCompleted = isFirstLaunchCompleted,
                 customBackgroundPath = customBackgroundPath
@@ -279,7 +342,9 @@ class SnowSettingsRepository(private val context: Context) {
             preferences[PreferencesKeys.SPARKLES_COUNT] = settings.sparklesCount
             preferences[PreferencesKeys.SPARKLES_SIZE] = settings.sparklesSize
             preferences[PreferencesKeys.SNOWBANK_STYLE] = settings.snowbankStyle.name
-            preferences[PreferencesKeys.USE_DETAILED_GRAPHICS] = settings.useDetailedGraphics
+            preferences[PreferencesKeys.IS_VIGNETTE_ENABLED] = settings.isVignetteEnabled
+            preferences[PreferencesKeys.VIGNETTE_STYLE] = settings.vignetteStyle.name
+            preferences[PreferencesKeys.VIGNETTE_SIZE] = settings.vignetteSize.name
             preferences[PreferencesKeys.IS_FIRST_LAUNCH_COMPLETED] = settings.isFirstLaunchCompleted
             if (settings.customBackgroundPath != null) {
                 preferences[PreferencesKeys.CUSTOM_BACKGROUND_PATH] = settings.customBackgroundPath

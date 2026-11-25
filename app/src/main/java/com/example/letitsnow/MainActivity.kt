@@ -525,6 +525,24 @@ class MainActivity : AppCompatActivity() {
                             pillDividerColor = pillDividerColor,
                             switchColors = pillSwitchColors
                         )
+
+                        // 5. Виньетка
+                        QuickControlPill(
+                            iconRes = R.drawable.ic_snowflake_notification,
+                            title = stringResource(R.string.settings_vignette_enabled_label),
+                            isChecked = currentSettings.isVignetteEnabled,
+                            onCheckedChange = { enabled ->
+                                val updated = currentSettings.copy(isVignetteEnabled = enabled)
+                                snowView.applySettings(updated)
+                                coroutineScope.launch {
+                                    settingsRepository.saveSettings(updated)
+                                }
+                            },
+                            pillBgColor = pillBgColor,
+                            pillBorderColor = pillBorderColor,
+                            pillDividerColor = pillDividerColor,
+                            switchColors = pillSwitchColors
+                        )
                     }
                 }
 

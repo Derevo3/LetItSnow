@@ -122,9 +122,10 @@ fun SnowSettingsMenu(
     var sparklesCount by remember(settings.sparklesCount) { mutableIntStateOf(settings.sparklesCount) }
     var sparklesSize by remember(settings.sparklesSize) { mutableFloatStateOf(settings.sparklesSize) }
 
-    var isSnowflakesExpanded by rememberSaveable { mutableStateOf(true) }
-    var isSnowbankExpanded by rememberSaveable { mutableStateOf(false) }
-    var isAdditionalExpanded by rememberSaveable { mutableStateOf(false) }
+    var isSnowflakesExpanded by rememberSaveable(isOpen) { mutableStateOf(false) }
+    var isSnowbankExpanded by rememberSaveable(isOpen) { mutableStateOf(false) }
+    var isVignetteExpanded by rememberSaveable(isOpen) { mutableStateOf(false) }
+    var isAdditionalExpanded by rememberSaveable(isOpen) { mutableStateOf(false) }
 
     fun buildCurrentSettings(): SnowSettings {
         return settings.copy(
@@ -782,7 +783,148 @@ fun SnowSettingsMenu(
                     }
 
                     // ==========================================
-                    // ГРУППА 3: ДОПОЛНИТЕЛЬНЫЕ НАСТРОЙКИ
+                    // ГРУППА 3: НАСТРОЙКА ВИНЬЕТКИ
+                    // ==========================================
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        SettingsGroupHeader(
+                            title = stringResource(R.string.settings_group_vignette),
+                            isExpanded = isVignetteExpanded,
+                            onToggle = { isVignetteExpanded = !isVignetteExpanded },
+                            primaryAccent = primaryAccent
+                        )
+
+                        AnimatedVisibility(
+                            visible = isVignetteExpanded,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut()
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 12.dp),
+                                verticalArrangement = Arrangement.spacedBy(14.dp)
+                            ) {
+                                // 1. Выбор стиля виньетки
+                                Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = stringResource(R.string.settings_vignette_style_label),
+                                            color = Color(0xFFE2E8F0),
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Text(
+                                            text = stringResource(settings.vignetteStyle.titleRes),
+                                            color = primaryAccent,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        VignetteStyle.entries.forEach { style ->
+                                            val isSelected = settings.vignetteStyle == style
+                                            val btnBg = if (isSelected) activeBgColor else Color(0x331E293B)
+                                            val btnBorder = if (isSelected) primaryAccent else Color(0x2264748B)
+
+                                            Box(
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .background(btnBg, RoundedCornerShape(10.dp))
+                                                    .border(1.dp, btnBorder, RoundedCornerShape(10.dp))
+                                                    .clickable {
+                                                        val updated = buildCurrentSettings().copy(vignetteStyle = style)
+                                                        onSettingsChanged(updated)
+                                                        onSaveSettings(updated)
+                                                    }
+                                                    .padding(vertical = 10.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    text = stringResource(style.titleRes),
+                                                    color = if (isSelected) Color.White else Color(0xFFCBD5E1),
+                                                    fontSize = 12.sp,
+                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                    maxLines = 1
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    Text(
+                                        text = stringResource(settings.vignetteStyle.descriptionRes),
+                                        color = Color(0xFF94A3B8),
+                                        fontSize = 12.sp
+                                    )
+                                }
+
+                                // 3. Выбор размера виньетки (для стиля «Узоры»)
+                                AnimatedVisibility(visible = settings.vignetteStyle == VignetteStyle.FROST_PATTERNS) {
+                                    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                text = stringResource(R.string.settings_vignette_size_label),
+                                                color = Color(0xFFE2E8F0),
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            Text(
+                                                text = stringResource(settings.vignetteSize.titleRes),
+                                                color = primaryAccent,
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            VignetteSize.entries.forEach { size ->
+                                                val isSelected = settings.vignetteSize == size
+                                                val btnBg = if (isSelected) activeBgColor else Color(0x331E293B)
+                                                val btnBorder = if (isSelected) primaryAccent else Color(0x2264748B)
+
+                                                Box(
+                                                    modifier = Modifier
+                                                        .weight(1f)
+                                                        .background(btnBg, RoundedCornerShape(10.dp))
+                                                        .border(1.dp, btnBorder, RoundedCornerShape(10.dp))
+                                                        .clickable {
+                                                            val updated = buildCurrentSettings().copy(vignetteSize = size)
+                                                            onSettingsChanged(updated)
+                                                            onSaveSettings(updated)
+                                                        }
+                                                        .padding(vertical = 10.dp),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Text(
+                                                        text = stringResource(size.titleRes),
+                                                        color = if (isSelected) Color.White else Color(0xFFCBD5E1),
+                                                        fontSize = 12.sp,
+                                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                        maxLines = 1
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // ==========================================
+                    // ГРУППА 4: ДОПОЛНИТЕЛЬНЫЕ НАСТРОЙКИ
                     // ==========================================
                     Column(modifier = Modifier.fillMaxWidth()) {
                         SettingsGroupHeader(

@@ -236,7 +236,7 @@ class SnowView @JvmOverloads constructor(
 
         val dm = resources.displayMetrics
         if (dm.widthPixels > 0 && dm.heightPixels > 0) {
-            SnowSimulationEngine.updateCanvasSize(dm.widthPixels.toFloat(), dm.heightPixels.toFloat(), density)
+            SnowSimulationEngine.updateCanvasSize(dm.widthPixels.toFloat(), dm.heightPixels.toFloat(), density, resources)
         }
 
         if (isOverlayMode) {
@@ -259,7 +259,7 @@ class SnowView @JvmOverloads constructor(
      */
     fun updateCanvasSize(w: Float, h: Float) {
         if (w > 0f && h > 0f) {
-            SnowSimulationEngine.updateCanvasSize(w, h, density)
+            SnowSimulationEngine.updateCanvasSize(w, h, density, resources)
             invalidate()
         }
     }
@@ -274,7 +274,7 @@ class SnowView @JvmOverloads constructor(
         if (!isOverlayMode && SnowSimulationEngine.customBackgroundBitmap != null) {
             SnowSimulationEngine.drawBackground(canvas, null)
         }
-        SnowSimulationEngine.draw(canvas)
+        SnowSimulationEngine.draw(canvas, resources)
     }
 
     @SuppressLint("ClickableViewAccessibility")

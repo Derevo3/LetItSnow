@@ -80,7 +80,7 @@ class SnowWallpaperService : WallpaperService() {
             surfaceHeight = height.toFloat()
 
             val density = resources.displayMetrics.density
-            SnowSimulationEngine.updateCanvasSize(surfaceWidth, surfaceHeight, density)
+            SnowSimulationEngine.updateCanvasSize(surfaceWidth, surfaceHeight, density, resources)
             updateBackgroundGradient()
 
             if (isVisibleState) {
@@ -159,8 +159,8 @@ class SnowWallpaperService : WallpaperService() {
                     // Отрисовываем фон (пользовательское фото или зимний градиент)
                     SnowSimulationEngine.drawBackground(canvas, bgPaint)
 
-                    // Отрисовываем общий снегопад и сугроб
-                    SnowSimulationEngine.draw(canvas)
+                    // Отрисовываем общий снегопад, сугроб и морозную виньетку
+                    SnowSimulationEngine.draw(canvas, resources)
                 }
             } catch (_: Exception) {
                 // Защита от исключений при смене жизненного цикла поверхности

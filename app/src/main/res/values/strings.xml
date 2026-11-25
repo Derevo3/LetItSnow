@@ -62,10 +62,25 @@
     <string name="settings_overlay_description">Падающий снег на рабочем столе и поверх других приложений</string>
     <string name="settings_snowbank_enabled_label">Сугроб внизу экрана</string>
     <string name="settings_snowbank_enabled_description">Накопление и отображение снега в нижней части экрана</string>
+    <string name="settings_vignette_enabled_label">Виньетка</string>
+    <string name="settings_vignette_enabled_desc">Ледяные морозные узоры по краям экрана</string>
     <!-- Settings Menu - Group Headers -->
     <string name="settings_group_snowflakes">Настройка снежинок</string>
     <string name="settings_group_snowbank">Настройка сугроба</string>
+    <string name="settings_group_vignette">Настройка виньетки</string>
     <string name="settings_group_additional">Дополнительные настройки</string>
+
+    <!-- Vignette Settings -->
+    <string name="settings_vignette_style_label">Стиль виньетки</string>
+    <string name="settings_vignette_size_label">Размер виньетки</string>
+    <string name="vignette_size_small">Маленькая</string>
+    <string name="vignette_size_medium">Средняя</string>
+    <string name="vignette_style_patterns_title">Узоры</string>
+    <string name="vignette_style_patterns_desc">Кристальные морозные узоры на стекле</string>
+    <string name="vignette_style_lights_title">Гирлянда</string>
+    <string name="vignette_style_lights_desc">Уютная праздничная новогодняя гирлянда</string>
+    <string name="vignette_style_evergreen_title">Ветки ели</string>
+    <string name="vignette_style_evergreen_desc">Праздничные хвойные еловые ветви</string>
 
     <string name="wallpaper_service_label">Снег на экране блокировки</string>
     <string name="wallpaper_service_desc">Живые обои снегопада для экрана блокировки и рабочего стола</string>

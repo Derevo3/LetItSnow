@@ -1,5 +1,6 @@
 package com.example.letitsnow
 
+import android.content.res.Resources
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
@@ -22,6 +23,9 @@ object SnowSimulationEngine {
     val sparkles = ArrayList<Sparkle>(60)
     val accumulation = SnowAccumulation()
     val snowMask = SnowMask()
+    val vignette = SnowVignette()
+
+    var resources: Resources? = null
 
     private val flakePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
@@ -69,8 +73,11 @@ object SnowSimulationEngine {
      * Масштабирует текущие снежинки без их очистки и пересоздания с нуля.
      */
     @Synchronized
-    fun updateCanvasSize(w: Float, h: Float, screenDensity: Float) {
+    fun updateCanvasSize(w: Float, h: Float, screenDensity: Float, res: Resources? = null) {
         if (w <= 0f || h <= 0f) return
+        if (res != null) {
+            resources = res
+        }
 
         val oldW = canvasWidth
         val oldH = canvasHeight
@@ -80,6 +87,7 @@ object SnowSimulationEngine {
 
         snowMask.setSize(w, h, density)
         accumulation.setSize(w, h, density)
+        vignette.setSize(w, h, density)
 
         if (snowflakes.isEmpty() || oldW <= 0f || oldH <= 0f) {
             initSnowflakes(w, h)
@@ -226,7 +234,10 @@ object SnowSimulationEngine {
      * Отрисовывает состояние симуляции (снежинки, сугроб и сказочные блёстки) на переданный Canvas.
      */
     @Synchronized
-    fun draw(canvas: Canvas) {
+    fun draw(canvas: Canvas, res: Resources? = resources) {
+        if (res != null) {
+            resources = res
+        }
         // 1. Отрисовка снежинок (слой 1)
         val isGlow = currentSettings.isGlowEnabled
         val theme = currentSettings.colorTheme
@@ -255,6 +266,22 @@ object SnowSimulationEngine {
             for (i in 0 until sparkles.size) {
                 sparkles[i].draw(canvas, sparklePaint, theme, sSize)
             }
+        }
+
+        // 4. Отрисовка морозной виньетки по краям экрана (слой 4)
+        if (currentSettings.isVignetteEnabled) {
+            val r = res ?: resources
+            if (r != null) {
+                vignette.draw(
+                    canvas = canvas,
+                    resources = r,
+                    style = currentSettings.vignetteStyle,
+                    size = currentSettings.vignetteSize,
+                    theme = theme
+                )
+            }
+        } else {
+            vignette.clear()
         }
     }
 
