@@ -47,9 +47,20 @@ object SnowSensorManager : SensorEventListener {
     private var smoothedX: Float = 0f
     private var smoothedY: Float = 9.8f
 
-    // Слушатель жеста встряхивания
+    // Слушатели жеста встряхивания
     var onShakeListener: (() -> Unit)? = null
+    private val shakeListeners = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
     private var lastShakeTimestampMs: Long = 0L
+
+    fun addShakeListener(listener: () -> Unit) {
+        if (!shakeListeners.contains(listener)) {
+            shakeListeners.add(listener)
+        }
+    }
+
+    fun removeShakeListener(listener: () -> Unit) {
+        shakeListeners.remove(listener)
+    }
 
     @Synchronized
     fun register(context: Context) {
@@ -145,6 +156,9 @@ object SnowSensorManager : SensorEventListener {
                 if (now - lastShakeTimestampMs > 800L) {
                     lastShakeTimestampMs = now
                     onShakeListener?.invoke()
+                    for (listener in shakeListeners) {
+                        listener.invoke()
+                    }
                 }
             }
 

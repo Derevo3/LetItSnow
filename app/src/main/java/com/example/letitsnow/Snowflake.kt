@@ -49,6 +49,19 @@ data class Snowflake(
         const val TYPE_FLAKE = 1    // 8%  — небольшие различимые хлопья
         const val TYPE_CRYSTAL = 2  // 2%  — изящные шестилучевые кристаллы
         private const val LANDING_DURATION = 0.22f
+
+        private val sharedHeartPath = Path()
+        private val sharedDiamondPath = Path()
+        private val CRYSTAL_COS = floatArrayOf(1.0f, 0.5f, -0.5f, -1.0f, -0.5f, 0.5f)
+        private val CRYSTAL_SIN = floatArrayOf(0.0f, 0.8660254f, 0.8660254f, 0.0f, -0.8660254f, -0.8660254f)
+
+        private fun buildHeart(r: Float) {
+            sharedHeartPath.reset()
+            sharedHeartPath.moveTo(0f, -r * 0.32f)
+            sharedHeartPath.cubicTo(-r * 0.65f, -r * 1.15f, -r * 1.35f, -r * 0.25f, 0f, r * 1.0f)
+            sharedHeartPath.cubicTo(r * 1.35f, -r * 0.25f, r * 0.65f, -r * 1.15f, 0f, -r * 0.32f)
+            sharedHeartPath.close()
+        }
     }
 
     /**
@@ -277,16 +290,6 @@ data class Snowflake(
         }
     }
 
-    private val heartPath = Path()
-    private val diamondPath by lazy { Path() }
-
-    private fun buildHeart(path: Path, r: Float) {
-        path.reset()
-        path.moveTo(0f, -r * 0.32f)
-        path.cubicTo(-r * 0.65f, -r * 1.15f, -r * 1.35f, -r * 0.25f, 0f, r * 1.0f)
-        path.cubicTo(r * 1.35f, -r * 0.25f, r * 0.65f, -r * 1.15f, 0f, -r * 0.32f)
-        path.close()
-    }
 
     /**
      * Отрисовка мягкого сказочного сияния вокруг частицы.
@@ -462,10 +465,19 @@ data class Snowflake(
                 val twigDy = r * 0.18f
 
                 for (i in 0 until 6) {
-                    canvas.drawLine(0f, 0f, r, 0f, paint)
-                    canvas.drawLine(twig, 0f, twig - twigDx, twigDy, paint)
-                    canvas.drawLine(twig, 0f, twig - twigDx, -twigDy, paint)
-                    canvas.rotate(60f)
+                    val cosA = CRYSTAL_COS[i]
+                    val sinA = CRYSTAL_SIN[i]
+                    val ex = r * cosA
+                    val ey = r * sinA
+                    canvas.drawLine(0f, 0f, ex, ey, paint)
+                    val tx = twig * cosA
+                    val ty = twig * sinA
+                    val bx = (twig - twigDx) * cosA
+                    val by = (twig - twigDx) * sinA
+                    val px = -sinA * twigDy
+                    val py = cosA * twigDy
+                    canvas.drawLine(tx, ty, bx + px, by + py, paint)
+                    canvas.drawLine(tx, ty, bx - px, by - py, paint)
                 }
 
                 paint.style = Paint.Style.FILL
@@ -564,7 +576,7 @@ data class Snowflake(
         canvas.scale(scaleX * tiltCos, scaleY)
 
         val heartR = effRadius * 1.25f
-        buildHeart(heartPath, heartR)
+        buildHeart(heartR)
 
         when (type) {
             TYPE_MICRO -> {
@@ -573,7 +585,7 @@ data class Snowflake(
                 val c = getMicroColor(colorTheme, microVariant)
                 paint.color = c
                 paint.alpha = currentAlpha
-                canvas.drawPath(heartPath, paint)
+                canvas.drawPath(sharedHeartPath, paint)
             }
             TYPE_FLAKE -> {
                 // Мягкие пушистые сердечки с лёгким романтичным ореолом
@@ -602,19 +614,19 @@ data class Snowflake(
                 paint.color = auraColor
                 paint.alpha = (currentAlpha * 0.35f).toInt()
                 canvas.scale(1.35f, 1.35f)
-                canvas.drawPath(heartPath, paint)
+                canvas.drawPath(sharedHeartPath, paint)
                 canvas.scale(1f / 1.35f, 1f / 1.35f)
 
                 // Основное тело
                 paint.color = mainColor
                 paint.alpha = currentAlpha
-                canvas.drawPath(heartPath, paint)
+                canvas.drawPath(sharedHeartPath, paint)
 
                 // Внутренний блик
                 paint.color = innerColor
                 paint.alpha = (currentAlpha * 0.75f).toInt()
                 canvas.scale(0.55f, 0.55f)
-                canvas.drawPath(heartPath, paint)
+                canvas.drawPath(sharedHeartPath, paint)
             }
             TYPE_CRYSTAL -> {
                 // Изящные ажурные сердечки с контуром и сиянием
@@ -638,14 +650,14 @@ data class Snowflake(
 
                 paint.color = strokeColor
                 paint.alpha = currentAlpha
-                canvas.drawPath(heartPath, paint)
+                canvas.drawPath(sharedHeartPath, paint)
 
                 // Внутреннее заполненное сердечко
                 paint.style = Paint.Style.FILL
                 paint.color = innerColor
                 paint.alpha = (currentAlpha * 0.85f).toInt()
                 canvas.scale(0.5f, 0.5f)
-                canvas.drawPath(heartPath, paint)
+                canvas.drawPath(sharedHeartPath, paint)
             }
         }
 
@@ -716,17 +728,17 @@ data class Snowflake(
                 canvas.scale(scaleX * (0.55f + 0.45f * abs(cos(tiltAngle))), scaleY)
 
                 val dR = effRadius * 1.15f
-                diamondPath.reset()
-                diamondPath.moveTo(0f, -dR)
-                diamondPath.lineTo(dR * 0.62f, 0f)
-                diamondPath.lineTo(0f, dR)
-                diamondPath.lineTo(-dR * 0.62f, 0f)
-                diamondPath.close()
+                sharedDiamondPath.reset()
+                sharedDiamondPath.moveTo(0f, -dR)
+                sharedDiamondPath.lineTo(dR * 0.62f, 0f)
+                sharedDiamondPath.lineTo(0f, dR)
+                sharedDiamondPath.lineTo(-dR * 0.62f, 0f)
+                sharedDiamondPath.close()
 
                 paint.style = Paint.Style.FILL
                 paint.color = facetColor
                 paint.alpha = (shimmerAlpha * 0.75f).toInt()
-                canvas.drawPath(diamondPath, paint)
+                canvas.drawPath(sharedDiamondPath, paint)
 
                 // Вспышка света на центральной грани
                 if (facetGlint > 0.6f) {

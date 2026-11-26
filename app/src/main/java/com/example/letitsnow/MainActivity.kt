@@ -7,7 +7,6 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.hardware.SensorManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -143,11 +142,9 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            val shakeDetector = remember {
-                val sm = context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
-                if (sm != null) {
-                    ShakeDetector(sm) {
-                        snowView.accumulation.clearAllSnow()
+            val onShake = remember(vibrator, currentSettings.isShakeToResetEnabled, currentSettings.isSnowbankEnabled) {
+                {
+                    if (currentSettings.isShakeToResetEnabled && currentSettings.isSnowbankEnabled) {
                         snowView.invalidate()
                         if (vibrator?.hasVibrator() == true) {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -160,7 +157,7 @@ class MainActivity : AppCompatActivity() {
                             }
                         }
                     }
-                } else null
+                }
             }
 
             // Состояние открытия меню настроек (сохраняется при смене языка и повороте экрана)
@@ -300,16 +297,15 @@ class MainActivity : AppCompatActivity() {
             }
 
             // Управление жизненным циклом анимации в фоне/на переднем плане внутри приложения
-            DisposableEffect(lifecycleOwner, snowView, shakeDetector) {
+            DisposableEffect(lifecycleOwner, snowView, onShake) {
+                SnowSensorManager.addShakeListener(onShake)
                 if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
                     snowView.start()
-                    shakeDetector?.start()
                 }
                 val observer = LifecycleEventObserver { _, event ->
                     when (event) {
                         Lifecycle.Event.ON_RESUME -> {
                             snowView.start()
-                            shakeDetector?.start()
                             // Проверяем актуальное состояние разрешения на оверлей при возвращении в приложение
                             if (Settings.canDrawOverlays(context)) {
                                 if (isPendingOverlayActivation) {
@@ -343,7 +339,6 @@ class MainActivity : AppCompatActivity() {
                             isWallpaperActive = checkWallpaperActive()
                         }
                         Lifecycle.Event.ON_PAUSE -> {
-                            shakeDetector?.stop()
                             snowView.pause()
                         }
                         else -> Unit
@@ -351,7 +346,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 lifecycleOwner.lifecycle.addObserver(observer)
                 onDispose {
-                    shakeDetector?.stop()
+                    SnowSensorManager.removeShakeListener(onShake)
                     lifecycleOwner.lifecycle.removeObserver(observer)
                 }
             }

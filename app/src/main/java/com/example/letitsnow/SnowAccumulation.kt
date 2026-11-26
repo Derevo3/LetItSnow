@@ -810,10 +810,7 @@ class SnowAccumulation {
         }
     }
 
-    @Deprecated("Use draw with SnowColorTheme")
-    fun draw(canvas: Canvas, style: SnowbankStyle, isBloody: Boolean) {
-        draw(canvas, style, if (isBloody) SnowColorTheme.SCARLET else SnowColorTheme.WHITE)
-    }
+
 
     /**
      * Отрисовка снежного покрова на горизонтально лежащем стекле телефона.
@@ -1174,15 +1171,11 @@ class SnowAccumulation {
             backPath.lineTo(0f, backStartY)
 
             val facetStep = (cols / 12).coerceIn(3, 7)
-            var px = 0f
-            var py = backStartY
             var c = facetStep
             while (c < cols) {
                 val cx = (c + 0.5f) * cellW
                 val cy = (smoothSurfaceY[c] - 4f * densityScale).coerceIn(0f, height)
                 backPath.lineTo(cx, cy)
-                px = cx
-                py = cy
                 c += facetStep
             }
             backPath.lineTo(width, smoothSurfaceY[cols - 1] - 4f * densityScale)
@@ -1197,16 +1190,12 @@ class SnowAccumulation {
             mainPath.lineTo(0f, startY)
             crestPath.moveTo(0f, startY)
 
-            px = 0f
-            py = startY
             c = facetStep
             while (c < cols) {
                 val cx = (c + 0.5f) * cellW
                 val cy = smoothSurfaceY[c].coerceIn(0f, height)
                 mainPath.lineTo(cx, cy)
                 crestPath.lineTo(cx, cy)
-                px = cx
-                py = cy
                 c += facetStep
             }
             val endY = smoothSurfaceY[cols - 1].coerceAtMost(height)
