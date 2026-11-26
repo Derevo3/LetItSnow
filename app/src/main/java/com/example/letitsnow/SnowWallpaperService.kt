@@ -1,5 +1,6 @@
 package com.example.letitsnow
 
+import android.content.Context
 import android.graphics.Canvas
 import android.graphics.LinearGradient
 import android.graphics.Paint
@@ -8,7 +9,9 @@ import android.os.Build
 import android.service.wallpaper.WallpaperService
 import android.view.Choreographer
 import android.view.MotionEvent
+import android.view.Surface
 import android.view.SurfaceHolder
+import android.view.WindowManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -63,10 +66,26 @@ class SnowWallpaperService : WallpaperService() {
             }
         }
 
+        private fun updateSensorRotation() {
+            val rot = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                try {
+                    display?.rotation ?: Surface.ROTATION_0
+                } catch (_: Throwable) {
+                    @Suppress("DEPRECATION")
+                    (getSystemService(Context.WINDOW_SERVICE) as? WindowManager)?.defaultDisplay?.rotation ?: Surface.ROTATION_0
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                (getSystemService(Context.WINDOW_SERVICE) as? WindowManager)?.defaultDisplay?.rotation ?: Surface.ROTATION_0
+            }
+            SnowSensorManager.updateDisplayRotation(rot)
+        }
+
         override fun onVisibilityChanged(visible: Boolean) {
             super.onVisibilityChanged(visible)
             if (isVisibleState != visible) {
                 if (visible) {
+                    updateSensorRotation()
                     SnowSensorManager.register(applicationContext)
                 } else {
                     SnowSensorManager.unregister()
@@ -86,6 +105,8 @@ class SnowWallpaperService : WallpaperService() {
             super.onSurfaceChanged(holder, format, width, height)
             surfaceWidth = width.toFloat()
             surfaceHeight = height.toFloat()
+
+            updateSensorRotation()
 
             val density = resources.displayMetrics.density
             SnowSimulationEngine.updateCanvasSize(surfaceWidth, surfaceHeight, density, resources)

@@ -49,6 +49,8 @@
     <string name="settings_style_label">Snowflake style</string>
     <string name="settings_glow_label">Glow</string>
     <string name="settings_glow_description">Gentle magical glow around snowflakes</string>
+    <string name="settings_bokeh_label">Bokeh (3D depth)</string>
+    <string name="settings_bokeh_description">Large out-of-focus foreground flakes for cinematic depth</string>
     <string name="settings_sparkles_label">Sparkles</string>
     <string name="settings_sparkles_description">Magical shimmering sparkles and glitter in the snowfall</string>
     <string name="settings_sparkles_count_label">Sparkles count</string>
@@ -90,9 +92,9 @@
     <string name="settings_tilt_wind_label">Gravity and tilt</string>
     <string name="settings_tilt_wind_desc">Snowfall direction adapts to device tilt and orientation</string>
 
-    <!-- Festive & Special Animations -->
-    <string name="settings_special_animations_label">Festive effects</string>
-    <string name="settings_special_animations_desc">Shooting star, Santa\'s sleigh and holiday surprises</string>
+    <!-- Events (Special Animations) -->
+    <string name="settings_special_animations_label">Events</string>
+    <string name="settings_special_animations_desc">Shooting star, Santa\'s sleigh and snowflakes melting on glass</string>
 
     <!-- Vignette Settings -->
     <string name="settings_vignette_style_label">Vignette style</string>
@@ -143,6 +145,8 @@
     <string name="snowflake_style_fluffy_desc">Soft fluffy winter flakes</string>
     <string name="snowflake_style_hearts_title">Hearts</string>
     <string name="snowflake_style_hearts_desc">Romantic hearts swirling softly in the air</string>
+    <string name="snowflake_style_diamond_title">Diamond</string>
+    <string name="snowflake_style_diamond_desc">Diamond dust: floating ice micro-crystals with shimmering facets</string>
 
     <!-- Snowbank Styles -->
     <string name="snowbank_style_smooth_hills_title">Dunes</string>

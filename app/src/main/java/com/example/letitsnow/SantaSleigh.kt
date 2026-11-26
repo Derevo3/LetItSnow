@@ -11,11 +11,16 @@ import kotlin.random.Random
  * Сказочный силуэт Деда Мороза / Санты на санях с упряжкой оленей,
  * парящий высоко в небе в далекой перспективе.
  *
- * Появляется периодически (раз в пару минут), грациозно пересекает экран
+ * Появляется периодически (раз в 5 минут), грациозно пересекает экран
  * с лёгким покачиванием упряжки и оставляет за собой едва заметный
  * мерцающий шлейф золотистой звездной пыли.
  */
 class SantaSleigh {
+
+    companion object {
+        const val INITIAL_DELAY_SEC = 300f
+        const val REPEAT_INTERVAL_SEC = 300f
+    }
 
     var isActive: Boolean = false
         private set
@@ -23,8 +28,8 @@ class SantaSleigh {
     var progress: Float = 0f
         private set
 
-    // Таймер следующего появления: первый раз через ~30 секунд, затем каждые 100..160 секунд (пару минут)
-    private var timerUntilNextSpawn: Float = 30f
+    // Таймер следующего появления: раз в 5 минут (300 секунд)
+    private var timerUntilNextSpawn: Float = INITIAL_DELAY_SEC
     private var durationSec: Float = 11.0f
 
     // Текущие координаты центра силуэта на экране
@@ -78,7 +83,7 @@ class SantaSleigh {
     fun reset() {
         isActive = false
         progress = 0f
-        timerUntilNextSpawn = 30f
+        timerUntilNextSpawn = INITIAL_DELAY_SEC
         trailParticles.clear()
     }
 
@@ -114,8 +119,8 @@ class SantaSleigh {
         progress += dtSec / durationSec
         if (progress >= 1.0f) {
             isActive = false
-            // Следующее появление через 100-160 секунд (~2-2.5 минуты)
-            timerUntilNextSpawn = 100f + Random.nextFloat() * 60f
+            // Следующее появление через 5 минут (300 секунд)
+            timerUntilNextSpawn = REPEAT_INTERVAL_SEC
             return
         }
 

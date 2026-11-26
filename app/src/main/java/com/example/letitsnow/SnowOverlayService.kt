@@ -17,6 +17,7 @@ import android.os.Build
 import android.os.IBinder
 import android.provider.Settings
 import android.view.Gravity
+import android.view.Surface
 import android.view.View
 import android.view.WindowManager
 import androidx.core.app.NotificationCompat
@@ -158,7 +159,7 @@ class SnowOverlayService : Service() {
 
     private fun getRealScreenSize(): Pair<Int, Int> {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val bounds = windowManager.maximumWindowMetrics.bounds
+            val bounds = windowManager.currentWindowMetrics.bounds
             Pair(bounds.width(), bounds.height())
         } else {
             val dm = android.util.DisplayMetrics()
@@ -168,6 +169,21 @@ class SnowOverlayService : Service() {
         }
     }
 
+    private fun updateSensorRotation() {
+        val rotation = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                display?.rotation ?: Surface.ROTATION_0
+            } catch (_: Throwable) {
+                @Suppress("DEPRECATION")
+                windowManager.defaultDisplay.rotation
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            windowManager.defaultDisplay.rotation
+        }
+        SnowSensorManager.updateDisplayRotation(rotation)
+    }
+
     private fun initOverlayView() {
         snowView = SnowView(this).apply {
             isOverlayMode = true
@@ -175,6 +191,7 @@ class SnowOverlayService : Service() {
 
         val (realW, realH) = getRealScreenSize()
         snowView.updateCanvasSize(realW.toFloat(), realH.toFloat())
+        updateSensorRotation()
 
         val windowType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -344,6 +361,7 @@ class SnowOverlayService : Service() {
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         try {
+            updateSensorRotation()
             if (::snowView.isInitialized && snowView.isAttachedToWindow) {
                 val (realW, realH) = getRealScreenSize()
                 layoutParams.width = realW

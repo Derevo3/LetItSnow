@@ -176,7 +176,7 @@ class Sparkle {
             SnowColorTheme.WHITE -> Triple(0xFFFFFFFF.toInt(), 0xFFFEF9C3.toInt(), 0x55E0F2FE.toInt())
             SnowColorTheme.SCARLET -> Triple(0xFFFF2E3B.toInt(), 0xFFFFF1F2.toInt(), 0x55DC2626.toInt())
             SnowColorTheme.PINK -> Triple(0xFFF472B6.toInt(), 0xFFFFF0F7.toInt(), 0x55FBCFE8.toInt())
-            SnowColorTheme.BLACK -> Triple(0xFFE2E8F0.toInt(), 0xFFFFFFFF.toInt(), 0x55475569.toInt())
+            SnowColorTheme.BLACK -> Triple(0xFF334155.toInt(), 0xFF64748B.toInt(), 0x551E293B.toInt())
         }
 
         // Мягкий внешний ореол сияния

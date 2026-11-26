@@ -8,6 +8,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
@@ -189,6 +190,10 @@ fun SnowSettingsMenu(
     val handleDismiss = {
         onSaveSettings(buildCurrentSettings())
         onDismiss()
+    }
+
+    BackHandler {
+        handleDismiss()
     }
 
     val isScarlet = settings.colorTheme == SnowColorTheme.SCARLET
@@ -530,7 +535,7 @@ fun SnowSettingsMenu(
                                                 Text(
                                                     text = stringResource(style.titleRes),
                                                     color = if (isSelected) Color.White else Color(0xFFCBD5E1),
-                                                    fontSize = 13.sp,
+                                                    fontSize = 11.sp,
                                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                                     maxLines = 1
                                                 )
@@ -571,6 +576,44 @@ fun SnowSettingsMenu(
                                         checked = settings.isGlowEnabled,
                                         onCheckedChange = { enabled ->
                                             val updated = buildCurrentSettings().copy(isGlowEnabled = enabled)
+                                            onSettingsChanged(updated)
+                                            onSaveSettings(updated)
+                                        },
+                                        colors = SwitchDefaults.colors(
+                                            checkedThumbColor = primaryAccent,
+                                            checkedTrackColor = activeTrackColor,
+                                            uncheckedThumbColor = Color(0xFF64748B),
+                                            uncheckedTrackColor = Color(0xFF334155)
+                                        )
+                                    )
+                                }
+
+                                // 4. Переключатель «Блёстки»
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(Color(0x331E293B), RoundedCornerShape(12.dp))
+                                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                                        Text(
+                                            text = stringResource(R.string.settings_sparkles_label),
+                                            color = Color.White,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Text(
+                                            text = stringResource(R.string.settings_sparkles_description),
+                                            color = Color(0xFF94A3B8),
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                    Switch(
+                                        checked = settings.isSparklesEnabled,
+                                        onCheckedChange = { enabled ->
+                                            val updated = buildCurrentSettings().copy(isSparklesEnabled = enabled)
                                             onSettingsChanged(updated)
                                             onSaveSettings(updated)
                                         },
@@ -1005,6 +1048,44 @@ fun SnowSettingsMenu(
                                     .padding(top = 12.dp),
                                 verticalArrangement = Arrangement.spacedBy(14.dp)
                             ) {
+                                // 0. Переключатель виньетки
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(Color(0x331E293B), RoundedCornerShape(12.dp))
+                                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                                        Text(
+                                            text = stringResource(R.string.settings_vignette_enabled_label),
+                                            color = Color.White,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Text(
+                                            text = stringResource(R.string.settings_vignette_enabled_desc),
+                                            color = Color(0xFF94A3B8),
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                    Switch(
+                                        checked = settings.isVignetteEnabled,
+                                        onCheckedChange = { enabled ->
+                                            val updated = buildCurrentSettings().copy(isVignetteEnabled = enabled)
+                                            onSettingsChanged(updated)
+                                            onSaveSettings(updated)
+                                        },
+                                        colors = SwitchDefaults.colors(
+                                            checkedThumbColor = primaryAccent,
+                                            checkedTrackColor = activeTrackColor,
+                                            uncheckedThumbColor = Color(0xFF64748B),
+                                            uncheckedTrackColor = Color(0xFF334155)
+                                        )
+                                    )
+                                }
+
                                 // 1. Выбор стиля виньетки
                                 Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Row(
@@ -1184,7 +1265,7 @@ fun SnowSettingsMenu(
                                     )
                                 }
 
-                                // 2. Праздничные эффекты (рождественская звезда и особые анимации)
+                                // 2. События (падающая звезда, сани Деда Мороза, тающие снежинки)
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -1210,6 +1291,44 @@ fun SnowSettingsMenu(
                                         checked = settings.isSpecialAnimationsEnabled,
                                         onCheckedChange = { enabled ->
                                             val updated = buildCurrentSettings().copy(isSpecialAnimationsEnabled = enabled)
+                                            onSettingsChanged(updated)
+                                            onSaveSettings(updated)
+                                        },
+                                        colors = SwitchDefaults.colors(
+                                            checkedThumbColor = primaryAccent,
+                                            checkedTrackColor = activeTrackColor,
+                                            uncheckedThumbColor = Color(0xFF64748B),
+                                            uncheckedTrackColor = Color(0xFF334155)
+                                        )
+                                    )
+                                }
+
+                                // 3. Кинематографическое боке (3D-фокус)
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(Color(0x331E293B), RoundedCornerShape(12.dp))
+                                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                                        Text(
+                                            text = stringResource(R.string.settings_bokeh_label),
+                                            color = Color.White,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Text(
+                                            text = stringResource(R.string.settings_bokeh_description),
+                                            color = Color(0xFF94A3B8),
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                    Switch(
+                                        checked = settings.isBokehEnabled,
+                                        onCheckedChange = { enabled ->
+                                            val updated = buildCurrentSettings().copy(isBokehEnabled = enabled)
                                             onSettingsChanged(updated)
                                             onSaveSettings(updated)
                                         },

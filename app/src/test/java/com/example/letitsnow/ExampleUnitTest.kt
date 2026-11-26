@@ -28,13 +28,14 @@ class ExampleUnitTest {
         assertEquals(SnowflakeStyle.FAIRYTALE, settings.snowflakeStyle)
         assertEquals(SnowColorTheme.WHITE, settings.colorTheme)
         assertFalse(settings.isGlowEnabled)
+        assertFalse(settings.isBokehEnabled)
         assertFalse(settings.isSparklesEnabled)
         assertEquals(40, settings.sparklesCount)
         assertEquals(1.0f, settings.sparklesSize, 0.001f)
         assertEquals(SnowbankStyle.SMOOTH_HILLS, settings.snowbankStyle)
         assertFalse(settings.isVignetteEnabled)
         assertEquals(VignetteStyle.FROST_PATTERNS, settings.vignetteStyle)
-        assertEquals(VignetteSize.MEDIUM, settings.vignetteSize)
+        assertEquals(VignetteSize.SMALL, settings.vignetteSize)
         assertTrue(settings.isTiltWindEnabled)
         assertTrue(settings.isSpecialAnimationsEnabled)
         assertTrue(settings.useDetailedGraphics)
@@ -74,7 +75,7 @@ class ExampleUnitTest {
 
     @Test
     fun snowSettings_styles_and_colors_haveAllOptions() {
-        assertEquals(3, SnowflakeStyle.entries.size)
+        assertEquals(4, SnowflakeStyle.entries.size)
         assertEquals(4, SnowColorTheme.entries.size)
         assertEquals(4, SnowbankStyle.entries.size)
         assertEquals("Белый", SnowColorTheme.WHITE.title)
@@ -84,6 +85,7 @@ class ExampleUnitTest {
         assertEquals("Сказочный", SnowflakeStyle.FAIRYTALE.title)
         assertEquals("Хлопья", SnowflakeStyle.FLUFFY.title)
         assertEquals("Сердечки", SnowflakeStyle.HEARTS.title)
+        assertEquals("Алмазы", SnowflakeStyle.DIAMOND_DUST.title)
     }
 
     @Test
@@ -156,13 +158,19 @@ class ExampleUnitTest {
         val star = ShootingStar()
         assertFalse("Star should not be active initially", star.isActive)
 
-        // Advance time by 15 seconds to trigger first spawn (timer is 12s)
-        star.update(15.0f, 1080f, 1920f, 2.5f)
+        // Advance time past initial delay (100s)
+        star.update(101.0f, 1080f, 1920f, 2.5f)
         assertTrue("Star should be active after timer expires", star.isActive)
 
         // Advance time to complete the flight duration (max duration ~2.2s)
         star.update(3.0f, 1080f, 1920f, 2.5f)
         assertFalse("Star should be inactive after flight completes", star.isActive)
+
+        // Should wait 5 minutes (300s) before next spawn
+        star.update(295.0f, 1080f, 1920f, 2.5f)
+        assertFalse("Star should wait full 5 minutes before next spawn", star.isActive)
+        star.update(6.0f, 1080f, 1920f, 2.5f)
+        assertTrue("Star should spawn again after 5 minutes", star.isActive)
     }
 
     @Test
@@ -170,19 +178,75 @@ class ExampleUnitTest {
         val sleigh = SantaSleigh()
         assertFalse("Sleigh should not be active initially", sleigh.isActive)
 
-        // Advance time by 35 seconds to trigger first spawn (initial timer is 30s)
-        sleigh.update(35.0f, 1080f, 1920f, 2.5f)
+        // Advance time past initial delay (300s)
+        sleigh.update(301.0f, 1080f, 1920f, 2.5f)
         assertTrue("Sleigh should be active after timer expires", sleigh.isActive)
 
         // Advance time to complete the flight duration (max duration ~14s)
         sleigh.update(16.0f, 1080f, 1920f, 2.5f)
         assertFalse("Sleigh should be inactive after flight completes", sleigh.isActive)
 
-        // Reset test: advance 170 seconds to exceed 100..160s timer
-        sleigh.update(170.0f, 1080f, 1920f, 2.5f)
+        // Should wait 5 minutes (300s) before next spawn
+        sleigh.update(295.0f, 1080f, 1920f, 2.5f)
+        assertFalse("Sleigh should wait full 5 minutes before next spawn", sleigh.isActive)
+        sleigh.update(6.0f, 1080f, 1920f, 2.5f)
         assertTrue(sleigh.isActive)
         sleigh.reset()
         assertFalse(sleigh.isActive)
         assertEquals(0f, sleigh.progress, 0.001f)
+    }
+
+    @Test
+    fun bokehFlake_lifecycle_and_tilt_areValid() {
+        val bokeh = BokehFlake()
+        bokeh.reset(1080f, 1920f, 2.5f, isInitial = true)
+        assertTrue(bokeh.radius >= 14f * 2.5f)
+        assertTrue(bokeh.alpha in 16..40)
+
+        val startBaseX = bokeh.baseX
+        val startY = bokeh.y
+        // Gravity tilted right
+        bokeh.update(0.1f, 1080f, 1920f, 2.5f, dirX = 1f, dirY = 0f)
+        assertTrue("Bokeh baseX should move right when dirX = 1", bokeh.baseX > startBaseX)
+        assertEquals(startY, bokeh.y, 0.001f)
+    }
+
+    @Test
+    fun meltingSnowflake_lifecycle_isCorrect() {
+        val melt = MeltingSnowflake()
+        assertFalse("MeltingSnowflake should not be active initially", melt.isActive)
+
+        // Advance past initial delay (200s)
+        melt.update(201.0f, 1080f, 1920f, 2.5f)
+        assertTrue("MeltingSnowflake should be active after timer expires", melt.isActive)
+
+        val initialDropY = melt.dropY
+        // Step through melting and droplet slide phases
+        repeat(60) {
+            melt.update(0.08f, 1080f, 1920f, 2.5f, dirX = 0f, dirY = 1f)
+        }
+        assertTrue("MeltingSnowflake should still be active during droplet slide", melt.isActive)
+        assertTrue("Droplet should slide downward after melting", melt.dropY > initialDropY + 50f)
+
+        // Advance further to complete full lifecycle (max ~7.8s)
+        melt.update(6.0f, 1080f, 1920f, 2.5f)
+        assertFalse("MeltingSnowflake should be inactive after droplet dries", melt.isActive)
+
+        // Should wait 5 minutes (300s) before next spawn
+        melt.update(295.0f, 1080f, 1920f, 2.5f)
+        assertFalse("MeltingSnowflake should wait full 5 minutes before next spawn", melt.isActive)
+        melt.update(6.0f, 1080f, 1920f, 2.5f)
+        melt.reset()
+        assertFalse(melt.isActive)
+        assertEquals(0f, melt.progress, 0.001f)
+    }
+
+    @Test
+    fun snowSensorManager_displayRotation_updatesCorrectly() {
+        SnowSensorManager.updateDisplayRotation(android.view.Surface.ROTATION_90)
+        assertEquals(android.view.Surface.ROTATION_90, SnowSensorManager.displayRotation)
+
+        SnowSensorManager.updateDisplayRotation(android.view.Surface.ROTATION_0)
+        assertEquals(android.view.Surface.ROTATION_0, SnowSensorManager.displayRotation)
     }
 }

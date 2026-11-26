@@ -271,10 +271,14 @@ data class Snowflake(
             SnowflakeStyle.HEARTS -> {
                 drawHearts(canvas, paint, density, effRadius, currentAlpha, scaleX, scaleY, sizeMultiplier, colorTheme)
             }
+            SnowflakeStyle.DIAMOND_DUST -> {
+                drawDiamondDust(canvas, paint, density, effRadius, currentAlpha, scaleX, scaleY, sizeMultiplier, colorTheme)
+            }
         }
     }
 
     private val heartPath = Path()
+    private val diamondPath by lazy { Path() }
 
     private fun buildHeart(path: Path, r: Float) {
         path.reset()
@@ -646,5 +650,122 @@ data class Snowflake(
         }
 
         canvas.restore()
+    }
+
+    /**
+     * СТИЛЬ: DIAMOND_DUST («Алмазная пыль» — парящие микрокристаллы с живым блеском граней)
+     */
+    private fun drawDiamondDust(
+        canvas: Canvas,
+        paint: Paint,
+        density: Float,
+        effRadius: Float,
+        currentAlpha: Int,
+        scaleX: Float,
+        scaleY: Float,
+        sizeMultiplier: Float,
+        colorTheme: SnowColorTheme
+    ) {
+        // Живое мерцание граней кристалла при вращении в воздухе
+        val facetGlint = abs(sin(tiltAngle * 1.8f))
+        val shimmerAlpha = (currentAlpha * (0.35f + 0.65f * facetGlint)).toInt().coerceIn(0, 255)
+
+        val coreColor = when (colorTheme) {
+            SnowColorTheme.WHITE -> 0xFFFFFFFF.toInt()
+            SnowColorTheme.SCARLET -> 0xFFFF8591.toInt()
+            SnowColorTheme.PINK -> 0xFFFFF1F2.toInt()
+            SnowColorTheme.BLACK -> 0xFFE2E8F0.toInt()
+        }
+        val facetColor = when (colorTheme) {
+            SnowColorTheme.WHITE -> 0xFFBAE6FD.toInt()
+            SnowColorTheme.SCARLET -> 0xFFFF1E27.toInt()
+            SnowColorTheme.PINK -> 0xFFF472B6.toInt()
+            SnowColorTheme.BLACK -> 0xFF475569.toInt()
+        }
+
+        when (type) {
+            TYPE_MICRO -> {
+                // Тончайшие ледяные иголочки и искрящиеся микро-крупинки
+                if (microVariant == 0) {
+                    paint.style = Paint.Style.FILL
+                    paint.color = coreColor
+                    paint.alpha = shimmerAlpha
+                    canvas.drawCircle(x, y, (effRadius * 0.72f * scaleX).coerceAtLeast(0.5f * density), paint)
+                } else {
+                    canvas.save()
+                    canvas.translate(x, y)
+                    canvas.rotate(rotation + microVariant * 45f)
+                    canvas.scale(scaleX, scaleY)
+
+                    paint.style = Paint.Style.STROKE
+                    paint.strokeCap = Paint.Cap.ROUND
+                    paint.strokeWidth = (0.65f * density * sizeMultiplier).coerceAtLeast(0.6f)
+                    paint.color = if (facetGlint > 0.75f) coreColor else facetColor
+                    paint.alpha = shimmerAlpha
+
+                    val needleHalf = effRadius * 1.15f
+                    canvas.drawLine(-needleHalf, 0f, needleHalf, 0f, paint)
+                    canvas.restore()
+                }
+            }
+            TYPE_FLAKE -> {
+                // Огранённый ромбовидный ледяной кристалл-призма
+                canvas.save()
+                canvas.translate(x, y)
+                canvas.rotate(rotation)
+                canvas.scale(scaleX * (0.55f + 0.45f * abs(cos(tiltAngle))), scaleY)
+
+                val dR = effRadius * 1.15f
+                diamondPath.reset()
+                diamondPath.moveTo(0f, -dR)
+                diamondPath.lineTo(dR * 0.62f, 0f)
+                diamondPath.lineTo(0f, dR)
+                diamondPath.lineTo(-dR * 0.62f, 0f)
+                diamondPath.close()
+
+                paint.style = Paint.Style.FILL
+                paint.color = facetColor
+                paint.alpha = (shimmerAlpha * 0.75f).toInt()
+                canvas.drawPath(diamondPath, paint)
+
+                // Вспышка света на центральной грани
+                if (facetGlint > 0.6f) {
+                    paint.color = coreColor
+                    paint.alpha = ((facetGlint - 0.6f) / 0.4f * currentAlpha).toInt().coerceIn(0, 255)
+                    canvas.drawCircle(0f, 0f, dR * 0.35f, paint)
+                }
+
+                canvas.restore()
+            }
+            TYPE_CRYSTAL -> {
+                // Миниатюрная 4-лучевая игольчатая искра с алмазным ядром
+                canvas.save()
+                canvas.translate(x, y)
+                canvas.rotate(rotation)
+                canvas.scale(scaleX, scaleY)
+
+                val r = effRadius * 1.25f * (0.75f + 0.35f * facetGlint)
+                paint.style = Paint.Style.STROKE
+                paint.strokeCap = Paint.Cap.ROUND
+                paint.strokeWidth = (0.75f * density * sizeMultiplier).coerceAtLeast(0.65f)
+                paint.color = facetColor
+                paint.alpha = shimmerAlpha
+
+                canvas.drawLine(-r, 0f, r, 0f, paint)
+                canvas.drawLine(0f, -r, 0f, r, paint)
+
+                val diag = r * 0.48f
+                paint.strokeWidth = (0.55f * density * sizeMultiplier).coerceAtLeast(0.5f)
+                canvas.drawLine(-diag, -diag, diag, diag, paint)
+                canvas.drawLine(-diag, diag, diag, -diag, paint)
+
+                paint.style = Paint.Style.FILL
+                paint.color = coreColor
+                paint.alpha = currentAlpha
+                canvas.drawCircle(0f, 0f, effRadius * 0.32f, paint)
+
+                canvas.restore()
+            }
+        }
     }
 }

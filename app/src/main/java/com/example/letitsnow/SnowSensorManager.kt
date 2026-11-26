@@ -5,6 +5,9 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.Build
+import android.view.Surface
+import android.view.WindowManager
 import kotlin.math.sqrt
 
 /**
@@ -13,6 +16,8 @@ import kotlin.math.sqrt
  * 1. Непрерывное определение вектора направления силы тяжести (Gravity Vector).
  *    Нормализованный вектор (gx, gy) с фиксированной длиной 1.0 задаёт чистое направление снегопада
  *    без паразитного ускорения при поворотах или наклонах.
+ *    С учётом текущей ориентации дисплея (портретная/альбомная) снег всегда падает строго вниз
+ *    относительно экрана.
  * 2. Распознавание встряхивания телефона (Shake Detection) для сброса наросшего сугроба.
  */
 object SnowSensorManager : SensorEventListener {
@@ -23,7 +28,7 @@ object SnowSensorManager : SensorEventListener {
     private var isRegistered = false
     private var activeSubscribersCount = 0
 
-    // Нормализованные компоненты вектора гравитации (-1.0 .. 1.0)
+    // Нормализованные компоненты вектора гравитации (-1.0 .. 1.0) в координатах экрана
     @Volatile
     var gravityX: Float = 0f
         private set
@@ -31,6 +36,13 @@ object SnowSensorManager : SensorEventListener {
     @Volatile
     var gravityY: Float = 1f
         private set
+
+    @Volatile
+    var displayRotation: Int = Surface.ROTATION_0
+
+    fun updateDisplayRotation(rotation: Int) {
+        displayRotation = rotation
+    }
 
     private var smoothedX: Float = 0f
     private var smoothedY: Float = 9.8f
@@ -42,6 +54,19 @@ object SnowSensorManager : SensorEventListener {
     @Synchronized
     fun register(context: Context) {
         activeSubscribersCount++
+        val wm = context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager
+        displayRotation = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                context.display?.rotation ?: wm?.defaultDisplay?.rotation ?: Surface.ROTATION_0
+            } catch (_: Throwable) {
+                @Suppress("DEPRECATION")
+                wm?.defaultDisplay?.rotation ?: Surface.ROTATION_0
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            wm?.defaultDisplay?.rotation ?: Surface.ROTATION_0
+        }
+
         if (isRegistered) return
 
         val sm = context.applicationContext.getSystemService(Context.SENSOR_SERVICE) as? SensorManager ?: return
@@ -88,8 +113,13 @@ object SnowSensorManager : SensorEventListener {
             smoothedX += alpha * (ax - smoothedX)
             smoothedY += alpha * (ay - smoothedY)
 
-            val rawGx = -smoothedX
-            val rawGy = smoothedY
+            // Пересчёт вектора гравитации из координат устройства в координаты экрана
+            val (rawGx, rawGy) = when (displayRotation) {
+                Surface.ROTATION_90 -> Pair(smoothedY, smoothedX)
+                Surface.ROTATION_180 -> Pair(smoothedX, -smoothedY)
+                Surface.ROTATION_270 -> Pair(-smoothedY, -smoothedX)
+                else -> Pair(-smoothedX, smoothedY)
+            }
 
             val len = sqrt(rawGx * rawGx + rawGy * rawGy)
             if (len > 0.5f) {
@@ -124,8 +154,12 @@ object SnowSensorManager : SensorEventListener {
                 smoothedX += alpha * (ax - smoothedX)
                 smoothedY += alpha * (ay - smoothedY)
 
-                val rawGx = -smoothedX
-                val rawGy = smoothedY
+                val (rawGx, rawGy) = when (displayRotation) {
+                    Surface.ROTATION_90 -> Pair(smoothedY, smoothedX)
+                    Surface.ROTATION_180 -> Pair(smoothedX, -smoothedY)
+                    Surface.ROTATION_270 -> Pair(-smoothedY, -smoothedX)
+                    else -> Pair(-smoothedX, smoothedY)
+                }
 
                 val len = sqrt(rawGx * rawGx + rawGy * rawGy)
                 if (len > 0.5f) {

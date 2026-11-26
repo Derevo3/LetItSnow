@@ -49,6 +49,8 @@
     <string name="settings_style_label">Стиль снежинок</string>
     <string name="settings_glow_label">Сияние</string>
     <string name="settings_glow_description">Нежное сказочное свечение вокруг снежинок</string>
+    <string name="settings_bokeh_label">Боке (3D-фокус)</string>
+    <string name="settings_bokeh_description">Крупные расфокусированные снежинки переднего плана для объёма</string>
     <string name="settings_sparkles_label">Блёстки</string>
     <string name="settings_sparkles_description">Мерцающие искры и волшебные переливы в снегопаде</string>
     <string name="settings_sparkles_count_label">Количество блёсток</string>
@@ -90,9 +92,9 @@
     <string name="settings_tilt_wind_label">Гравитация и наклон</string>
     <string name="settings_tilt_wind_desc">Направление снегопада адаптируется под поворот и наклон экрана</string>
 
-    <!-- Festive & Special Animations -->
-    <string name="settings_special_animations_label">Праздничные эффекты</string>
-    <string name="settings_special_animations_desc">Падающая звезда, сани Деда Мороза и праздничные сюрпризы</string>
+    <!-- Events (Special Animations) -->
+    <string name="settings_special_animations_label">События</string>
+    <string name="settings_special_animations_desc">Падающая звезда, сани Деда Мороза и тающие снежинки на стекле</string>
 
     <!-- Vignette Settings -->
     <string name="settings_vignette_style_label">Стиль виньетки</string>
@@ -143,6 +145,8 @@
     <string name="snowflake_style_fluffy_desc">Мягкие пушистые зимние хлопья</string>
     <string name="snowflake_style_hearts_title">Сердечки</string>
     <string name="snowflake_style_hearts_desc">Кружащиеся в воздухе романтичные сердечки</string>
+    <string name="snowflake_style_diamond_title">Алмазы</string>
+    <string name="snowflake_style_diamond_desc">Алмазная пыль: парящие микрокристаллы с живым блеском граней</string>
 
     <!-- Snowbank Styles -->
     <string name="snowbank_style_smooth_hills_title">Дюны</string>

@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffColorFilter
@@ -17,8 +18,10 @@ import androidx.annotation.DrawableRes
  * - [VignetteStyle.CHRISTMAS_LIGHTS] — уютная новогодняя гирлянда с разноцветными лампочками.
  * - [VignetteStyle.EVERGREEN] — праздничные хвойные еловые ветви по краям дисплея.
  *
- * Использует динамическое вырезание темного фона в плавную альфа-прозрачность
- * и аппаратное кэширование под разрешение экрана.
+ * Оптимизировано для мгновенного поворота экрана (0 мс задержки):
+ * - Базовый прозрачный битмап обрабатывается один раз и сохраняется в памяти.
+ * - При смене ориентации (портрет <-> альбом) повторная обработка миллионов пикселей НЕ выполняется.
+ * - Отрисовка под текущие размеры и ориентацию выполняется аппаратно на GPU через матрицу трансформации.
  */
 class SnowVignette {
 
@@ -28,19 +31,24 @@ class SnowVignette {
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
 
-    // Кэш текущего обработанного битмапа под размер дисплея и выбранный ресурс
-    private var cachedBitmap: Bitmap? = null
-    private var cachedWidth: Int = 0
-    private var cachedHeight: Int = 0
+    // Кэш обработанного базового битмапа с прозрачным фоном
+    private var baseTransparentBitmap: Bitmap? = null
     private var cachedResId: Int = 0
+
+    // Матрица аппаратной отрисовки на GPU
+    private val drawMatrix = Matrix()
+    private var lastMatrixTargetW: Float = -1f
+    private var lastMatrixTargetH: Float = -1f
+    private var lastMatrixBmpW: Int = -1
+    private var lastMatrixBmpH: Int = -1
 
     @get:DrawableRes
     val drawableRes: Int
-        get() = getDrawableRes(VignetteStyle.FROST_PATTERNS, VignetteSize.MEDIUM)
+        get() = getDrawableRes(VignetteStyle.FROST_PATTERNS, VignetteSize.SMALL)
 
     companion object {
         @DrawableRes
-        fun getDrawableRes(style: VignetteStyle, size: VignetteSize = VignetteSize.MEDIUM): Int {
+        fun getDrawableRes(style: VignetteStyle, size: VignetteSize = VignetteSize.SMALL): Int {
             return when (style) {
                 VignetteStyle.FROST_PATTERNS -> {
                     when (size) {
@@ -59,15 +67,18 @@ class SnowVignette {
         width = w
         height = h
         density = screenDensity
-        invalidate()
+        // При повороте экрана битмап НЕ сбрасывается и НЕ пересчитывается!
+        // Сбрасывается только кэш матрицы для мгновенного обновления под новый размер
+        lastMatrixTargetW = -1f
+        lastMatrixTargetH = -1f
     }
 
     fun invalidate() {
-        cachedBitmap?.recycle()
-        cachedBitmap = null
-        cachedWidth = 0
-        cachedHeight = 0
+        baseTransparentBitmap?.recycle()
+        baseTransparentBitmap = null
         cachedResId = 0
+        lastMatrixTargetW = -1f
+        lastMatrixTargetH = -1f
     }
 
     fun clear() {
@@ -78,21 +89,31 @@ class SnowVignette {
         canvas: Canvas,
         resources: Resources,
         style: VignetteStyle = VignetteStyle.FROST_PATTERNS,
-        size: VignetteSize = VignetteSize.MEDIUM,
+        size: VignetteSize = VignetteSize.SMALL,
         theme: SnowColorTheme = SnowColorTheme.WHITE,
         frameTimeNanos: Long = 0L
     ) {
-        val targetW = width.toInt()
-        val targetH = height.toInt()
-        if (targetW <= 0 || targetH <= 0) return
+        val targetW = width
+        val targetH = height
+        if (targetW <= 0f || targetH <= 0f) return
 
         val resId = getDrawableRes(style, size)
 
-        if (cachedBitmap == null || cachedWidth != targetW || cachedHeight != targetH || cachedResId != resId) {
-            loadAndCacheBitmap(resources, targetW, targetH, resId, style)
+        if (baseTransparentBitmap == null || cachedResId != resId || baseTransparentBitmap?.isRecycled == true) {
+            loadAndCacheBaseBitmap(resources, resId, style)
         }
 
-        // Поддержка цветовой темы для морозных узоров, гирлянду и еловые ветви оставляем в сочных природных цветах
+        val bmp = baseTransparentBitmap ?: return
+        if (bmp.isRecycled) return
+
+        // Обновляем матрицу трансформации на GPU только если размеры изменились
+        if (lastMatrixTargetW != targetW || lastMatrixTargetH != targetH ||
+            lastMatrixBmpW != bmp.width || lastMatrixBmpH != bmp.height
+        ) {
+            updateDrawMatrix(targetW, targetH, bmp.width, bmp.height)
+        }
+
+        // Поддержка цветовой темы для морозных узоров
         if (style == VignetteStyle.FROST_PATTERNS && theme != SnowColorTheme.WHITE) {
             paint.colorFilter = when (theme) {
                 SnowColorTheme.SCARLET -> PorterDuffColorFilter(Color.rgb(255, 120, 120), PorterDuff.Mode.MULTIPLY)
@@ -114,22 +135,50 @@ class SnowVignette {
             paint.alpha = 255
         }
 
-        cachedBitmap?.let { bmp ->
-            if (!bmp.isRecycled) {
-                canvas.drawBitmap(bmp, 0f, 0f, paint)
-            }
-        }
+        // Аппаратная отрисовка на GPU без создания промежуточных битмапов
+        canvas.drawBitmap(bmp, drawMatrix, paint)
     }
 
-    private fun loadAndCacheBitmap(
+    private fun updateDrawMatrix(targetW: Float, targetH: Float, bmpW: Int, bmpH: Int) {
+        drawMatrix.reset()
+        val isLandscape = targetW > targetH
+        val isBmpPortrait = bmpW < bmpH
+
+        if (isLandscape && isBmpPortrait) {
+            // Альбомная ориентация: поворот портретного ресурса на 90° по часовой стрелке
+            // bmp.height масштабируется в targetW, bmp.width масштабируется в targetH
+            val scaleX = targetH / bmpW.toFloat()
+            val scaleY = targetW / bmpH.toFloat()
+            drawMatrix.postScale(scaleX, scaleY)
+            drawMatrix.postRotate(90f)
+            drawMatrix.postTranslate(targetW, 0f)
+        } else if (!isLandscape && !isBmpPortrait) {
+            // Портретный экран, но альбомный ресурс: поворот на 90°
+            val scaleX = targetH / bmpW.toFloat()
+            val scaleY = targetW / bmpH.toFloat()
+            drawMatrix.postScale(scaleX, scaleY)
+            drawMatrix.postRotate(90f)
+            drawMatrix.postTranslate(targetW, 0f)
+        } else {
+            // Обычное масштабирование без поворота
+            val scaleX = targetW / bmpW.toFloat()
+            val scaleY = targetH / bmpH.toFloat()
+            drawMatrix.postScale(scaleX, scaleY)
+        }
+
+        lastMatrixTargetW = targetW
+        lastMatrixTargetH = targetH
+        lastMatrixBmpW = bmpW
+        lastMatrixBmpH = bmpH
+    }
+
+    private fun loadAndCacheBaseBitmap(
         resources: Resources,
-        targetW: Int,
-        targetH: Int,
         resId: Int,
         style: VignetteStyle
     ) {
-        cachedBitmap?.recycle()
-        cachedBitmap = null
+        baseTransparentBitmap?.recycle()
+        baseTransparentBitmap = null
         cachedResId = 0
 
         try {
@@ -141,8 +190,9 @@ class SnowVignette {
             val origH = options.outHeight
             if (origW <= 0 || origH <= 0) return
 
+            // Ограничиваем базовый размер для молниеносной обработки пикселей и экономии памяти
             var sampleSize = 1
-            while (origW / (sampleSize * 2) >= targetW && origH / (sampleSize * 2) >= targetH) {
+            while (origW / (sampleSize * 2) >= 720 && origH / (sampleSize * 2) >= 1280) {
                 sampleSize *= 2
             }
 
@@ -152,19 +202,15 @@ class SnowVignette {
 
             val decoded = BitmapFactory.decodeResource(resources, resId, options) ?: return
 
-            // 1. Масштабируем точно под размер экрана
-            val scaled = Bitmap.createScaledBitmap(decoded, targetW, targetH, true)
-            if (scaled != decoded) {
-                decoded.recycle()
-            }
-
-            // 2. Преобразуем черный фон в прозрачность
-            val pixels = IntArray(targetW * targetH)
-            scaled.getPixels(pixels, 0, targetW, 0, 0, targetW, targetH)
-            scaled.recycle()
+            val w = decoded.width
+            val h = decoded.height
+            val pixels = IntArray(w * h)
+            decoded.getPixels(pixels, 0, w, 0, 0, w, h)
+            decoded.recycle()
 
             val isFrost = style == VignetteStyle.FROST_PATTERNS
 
+            // Сверхбыстрая целочисленная обработка альфа-прозрачности (без float делений)
             for (i in pixels.indices) {
                 val color = pixels[i]
                 val r = (color shr 16) and 0xFF
@@ -175,35 +221,31 @@ class SnowVignette {
                 if (maxC <= 14) {
                     pixels[i] = 0 // Полная прозрачность для темного центра экрана
                 } else if (isFrost) {
-                    // Морозные кристаллы: яркость определяет прозрачность, цвета нормализуются для чистоты свечения
-                    val aNorm = ((maxC - 10) / 245f).coerceIn(0f, 1f)
-                    val a = (aNorm * 255f).toInt()
-                    val boost = 255f / maxC
-                    val nr = (r * boost).toInt().coerceAtMost(255)
-                    val ng = (g * boost).toInt().coerceAtMost(255)
-                    val nb = (b * boost).toInt().coerceAtMost(255)
+                    val a = (((maxC - 10) * 255) / 245).coerceIn(0, 255)
+                    val nr = ((r * 255) / maxC).coerceAtMost(255)
+                    val ng = ((g * 255) / maxC).coerceAtMost(255)
+                    val nb = ((b * 255) / maxC).coerceAtMost(255)
                     pixels[i] = (a shl 24) or (nr shl 16) or (ng shl 8) or nb
                 } else {
-                    // Гирлянда и ветки ели: насыщенные цветные объекты с мягким сглаживанием по контуру
                     val a = if (maxC >= 40) {
                         255
                     } else {
-                        (((maxC - 14) / 26f) * 255f).toInt().coerceIn(0, 255)
+                        (((maxC - 14) * 255) / 26).coerceIn(0, 255)
                     }
                     pixels[i] = (a shl 24) or (r shl 16) or (g shl 8) or b
                 }
             }
 
-            val finalBitmap = Bitmap.createBitmap(targetW, targetH, Bitmap.Config.ARGB_8888)
-            finalBitmap.setPixels(pixels, 0, targetW, 0, 0, targetW, targetH)
+            val finalBitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+            finalBitmap.setPixels(pixels, 0, w, 0, 0, w, h)
 
-            cachedBitmap = finalBitmap
-            cachedWidth = targetW
-            cachedHeight = targetH
+            baseTransparentBitmap = finalBitmap
             cachedResId = resId
+            lastMatrixTargetW = -1f
+            lastMatrixTargetH = -1f
         } catch (_: Throwable) {
-            cachedBitmap?.recycle()
-            cachedBitmap = null
+            baseTransparentBitmap?.recycle()
+            baseTransparentBitmap = null
             cachedResId = 0
         }
     }

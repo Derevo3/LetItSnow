@@ -79,6 +79,12 @@ enum class SnowflakeStyle(
         "Кружащиеся в воздухе романтичные сердечки",
         R.string.snowflake_style_hearts_title,
         R.string.snowflake_style_hearts_desc
+    ),
+    DIAMOND_DUST(
+        "Алмазы",
+        "Алмазная пыль: парящие микрокристаллы с живым блеском граней",
+        R.string.snowflake_style_diamond_title,
+        R.string.snowflake_style_diamond_desc
     )
 }
 
@@ -173,13 +179,14 @@ data class SnowSettings(
     val snowflakeStyle: SnowflakeStyle = SnowflakeStyle.FAIRYTALE,
     val colorTheme: SnowColorTheme = SnowColorTheme.WHITE,
     val isGlowEnabled: Boolean = false,
+    val isBokehEnabled: Boolean = false,
     val isSparklesEnabled: Boolean = false,
     val sparklesCount: Int = DEFAULT_SPARKLES_COUNT,
     val sparklesSize: Float = DEFAULT_SPARKLES_SIZE,
     val snowbankStyle: SnowbankStyle = SnowbankStyle.SMOOTH_HILLS,
     val isVignetteEnabled: Boolean = false,
     val vignetteStyle: VignetteStyle = VignetteStyle.FROST_PATTERNS,
-    val vignetteSize: VignetteSize = VignetteSize.MEDIUM,
+    val vignetteSize: VignetteSize = VignetteSize.SMALL,
     val isTiltWindEnabled: Boolean = true,
     val isSpecialAnimationsEnabled: Boolean = true,
     val useDetailedGraphics: Boolean = true,
@@ -235,6 +242,7 @@ class SnowSettingsRepository(private val context: Context) {
         val SNOWFLAKE_STYLE = stringPreferencesKey("snowflake_style")
         val COLOR_THEME = stringPreferencesKey("color_theme")
         val IS_GLOW_ENABLED = booleanPreferencesKey("is_glow_enabled")
+        val IS_BOKEH_ENABLED = booleanPreferencesKey("is_bokeh_enabled")
         val IS_SPARKLES_ENABLED = booleanPreferencesKey("is_sparkles_enabled")
         val SPARKLES_COUNT = intPreferencesKey("sparkles_count")
         val SPARKLES_SIZE = floatPreferencesKey("sparkles_size")
@@ -249,6 +257,14 @@ class SnowSettingsRepository(private val context: Context) {
         val CUSTOM_BACKGROUND_PATH = stringPreferencesKey("custom_background_path")
     }
 
+    private inline fun <reified T> Preferences.getSafe(key: Preferences.Key<T>, default: T): T {
+        return asMap()[key] as? T ?: default
+    }
+
+    private fun Preferences.getSafeStringOrNull(key: Preferences.Key<String>): String? {
+        return asMap()[key] as? String
+    }
+
     val settingsFlow: Flow<SnowSettings> = context.snowDataStore.data
         .catch { exception ->
             if (exception is IOException) {
@@ -258,62 +274,63 @@ class SnowSettingsRepository(private val context: Context) {
             }
         }
         .map { preferences ->
-            val fallSpeed = preferences[PreferencesKeys.FALL_SPEED] ?: SnowSettings.DEFAULT_FALL_SPEED
-            val intensity = preferences[PreferencesKeys.INTENSITY] ?: SnowSettings.DEFAULT_INTENSITY
-            val accumulationRate = preferences[PreferencesKeys.ACCUMULATION_RATE] ?: SnowSettings.DEFAULT_ACCUMULATION_RATE
-            val isOverlayEnabled = preferences[PreferencesKeys.IS_OVERLAY_ENABLED] ?: false
-            val isSnowbankEnabled = preferences[PreferencesKeys.IS_SNOWBANK_ENABLED] ?: true
-            val isSnowbankGrowthEnabled = preferences[PreferencesKeys.IS_SNOWBANK_GROWTH_ENABLED] ?: true
-            val isShakeToResetEnabled = preferences[PreferencesKeys.IS_SHAKE_TO_RESET_ENABLED] ?: true
-            val snowbankHeight = preferences[PreferencesKeys.SNOWBANK_HEIGHT] ?: SnowSettings.DEFAULT_SNOWBANK_HEIGHT
-            val snowflakeSize = preferences[PreferencesKeys.SNOWFLAKE_SIZE] ?: SnowSettings.DEFAULT_SNOWFLAKE_SIZE
+            val fallSpeed = preferences.getSafe(PreferencesKeys.FALL_SPEED, SnowSettings.DEFAULT_FALL_SPEED)
+            val intensity = preferences.getSafe(PreferencesKeys.INTENSITY, SnowSettings.DEFAULT_INTENSITY)
+            val accumulationRate = preferences.getSafe(PreferencesKeys.ACCUMULATION_RATE, SnowSettings.DEFAULT_ACCUMULATION_RATE)
+            val isOverlayEnabled = preferences.getSafe(PreferencesKeys.IS_OVERLAY_ENABLED, false)
+            val isSnowbankEnabled = preferences.getSafe(PreferencesKeys.IS_SNOWBANK_ENABLED, true)
+            val isSnowbankGrowthEnabled = preferences.getSafe(PreferencesKeys.IS_SNOWBANK_GROWTH_ENABLED, true)
+            val isShakeToResetEnabled = preferences.getSafe(PreferencesKeys.IS_SHAKE_TO_RESET_ENABLED, true)
+            val snowbankHeight = preferences.getSafe(PreferencesKeys.SNOWBANK_HEIGHT, SnowSettings.DEFAULT_SNOWBANK_HEIGHT)
+            val snowflakeSize = preferences.getSafe(PreferencesKeys.SNOWFLAKE_SIZE, SnowSettings.DEFAULT_SNOWFLAKE_SIZE)
 
-            val styleName = preferences[PreferencesKeys.SNOWFLAKE_STYLE] ?: SnowflakeStyle.FAIRYTALE.name
+            val styleName = preferences.getSafe(PreferencesKeys.SNOWFLAKE_STYLE, SnowflakeStyle.FAIRYTALE.name)
             val snowflakeStyle = try {
                 SnowflakeStyle.valueOf(styleName)
             } catch (_: IllegalArgumentException) {
                 SnowflakeStyle.FAIRYTALE
             }
 
-            val themeName = preferences[PreferencesKeys.COLOR_THEME] ?: SnowColorTheme.WHITE.name
+            val themeName = preferences.getSafe(PreferencesKeys.COLOR_THEME, SnowColorTheme.WHITE.name)
             val colorTheme = try {
                 SnowColorTheme.valueOf(themeName)
             } catch (_: IllegalArgumentException) {
                 SnowColorTheme.WHITE
             }
 
-            val isGlowEnabled = preferences[PreferencesKeys.IS_GLOW_ENABLED] ?: false
-            val isSparklesEnabled = preferences[PreferencesKeys.IS_SPARKLES_ENABLED] ?: false
-            val sparklesCount = preferences[PreferencesKeys.SPARKLES_COUNT] ?: SnowSettings.DEFAULT_SPARKLES_COUNT
-            val sparklesSize = preferences[PreferencesKeys.SPARKLES_SIZE] ?: SnowSettings.DEFAULT_SPARKLES_SIZE
+            val isGlowEnabled = preferences.getSafe(PreferencesKeys.IS_GLOW_ENABLED, false)
+            val isBokehEnabled = preferences.getSafe(PreferencesKeys.IS_BOKEH_ENABLED, false)
+            val isSparklesEnabled = preferences.getSafe(PreferencesKeys.IS_SPARKLES_ENABLED, false)
+            val sparklesCount = preferences.getSafe(PreferencesKeys.SPARKLES_COUNT, SnowSettings.DEFAULT_SPARKLES_COUNT)
+            val sparklesSize = preferences.getSafe(PreferencesKeys.SPARKLES_SIZE, SnowSettings.DEFAULT_SPARKLES_SIZE)
 
-            val bankStyleName = preferences[PreferencesKeys.SNOWBANK_STYLE] ?: SnowbankStyle.SMOOTH_HILLS.name
+            val bankStyleName = preferences.getSafe(PreferencesKeys.SNOWBANK_STYLE, SnowbankStyle.SMOOTH_HILLS.name)
             val snowbankStyle = try {
                 SnowbankStyle.valueOf(bankStyleName)
             } catch (_: IllegalArgumentException) {
                 SnowbankStyle.SMOOTH_HILLS
             }
 
-            val isVignetteEnabled = preferences[PreferencesKeys.IS_VIGNETTE_ENABLED] ?: false
-            val vigStyleName = preferences[PreferencesKeys.VIGNETTE_STYLE] ?: VignetteStyle.FROST_PATTERNS.name
+            val isVignetteEnabled = preferences.getSafe(PreferencesKeys.IS_VIGNETTE_ENABLED, false)
+            val vigStyleName = preferences.getSafe(PreferencesKeys.VIGNETTE_STYLE, VignetteStyle.FROST_PATTERNS.name)
             val vignetteStyle = try {
                 VignetteStyle.valueOf(vigStyleName)
             } catch (_: IllegalArgumentException) {
                 VignetteStyle.FROST_PATTERNS
             }
-            val vigSizeName = preferences[PreferencesKeys.VIGNETTE_SIZE] ?: VignetteSize.MEDIUM.name
+            val vigSizeName = preferences.getSafe(PreferencesKeys.VIGNETTE_SIZE, VignetteSize.SMALL.name)
             val vignetteSize = try {
                 VignetteSize.valueOf(vigSizeName)
             } catch (_: IllegalArgumentException) {
-                VignetteSize.MEDIUM
+                VignetteSize.SMALL
             }
 
-            val isTiltWindEnabled = preferences[PreferencesKeys.IS_TILT_WIND_ENABLED] ?: true
-            val isSpecialAnimationsEnabled = preferences[PreferencesKeys.IS_SPECIAL_ANIMATIONS_ENABLED] ?: true
+            val isTiltWindEnabled = preferences.getSafe(PreferencesKeys.IS_TILT_WIND_ENABLED, true)
+            val isSpecialAnimationsEnabled = preferences.getSafe(PreferencesKeys.IS_SPECIAL_ANIMATIONS_ENABLED, true)
 
-            val useDetailedGraphics = preferences[PreferencesKeys.USE_DETAILED_GRAPHICS] ?: true
-            val isFirstLaunchCompleted = preferences[PreferencesKeys.IS_FIRST_LAUNCH_COMPLETED] ?: false
-            val customBackgroundPath = preferences[PreferencesKeys.CUSTOM_BACKGROUND_PATH]
+            val useDetailedGraphics = preferences.getSafe(PreferencesKeys.USE_DETAILED_GRAPHICS, true)
+            val isFirstLaunchCompleted = preferences.getSafe(PreferencesKeys.IS_FIRST_LAUNCH_COMPLETED, false)
+            val customBackgroundPath = preferences.getSafeStringOrNull(PreferencesKeys.CUSTOM_BACKGROUND_PATH)
 
             SnowSettings(
                 fallSpeed = fallSpeed,
@@ -328,6 +345,7 @@ class SnowSettingsRepository(private val context: Context) {
                 snowflakeStyle = snowflakeStyle,
                 colorTheme = colorTheme,
                 isGlowEnabled = isGlowEnabled,
+                isBokehEnabled = isBokehEnabled,
                 isSparklesEnabled = isSparklesEnabled,
                 sparklesCount = sparklesCount,
                 sparklesSize = sparklesSize,
@@ -357,6 +375,7 @@ class SnowSettingsRepository(private val context: Context) {
             preferences[PreferencesKeys.SNOWFLAKE_STYLE] = settings.snowflakeStyle.name
             preferences[PreferencesKeys.COLOR_THEME] = settings.colorTheme.name
             preferences[PreferencesKeys.IS_GLOW_ENABLED] = settings.isGlowEnabled
+            preferences[PreferencesKeys.IS_BOKEH_ENABLED] = settings.isBokehEnabled
             preferences[PreferencesKeys.IS_SPARKLES_ENABLED] = settings.isSparklesEnabled
             preferences[PreferencesKeys.SPARKLES_COUNT] = settings.sparklesCount
             preferences[PreferencesKeys.SPARKLES_SIZE] = settings.sparklesSize

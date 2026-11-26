@@ -18,6 +18,7 @@ import android.provider.Settings
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -164,6 +165,10 @@ class MainActivity : AppCompatActivity() {
 
             // Состояние открытия меню настроек (сохраняется при смене языка и повороте экрана)
             var isSettingsOpen by rememberSaveable { mutableStateOf(false) }
+
+            BackHandler(enabled = isSettingsOpen) {
+                isSettingsOpen = false
+            }
 
             // Диалоги онбординга и последовательного запроса разрешений
             var showWelcomeDialog by rememberSaveable { mutableStateOf(false) }
@@ -508,25 +513,7 @@ class MainActivity : AppCompatActivity() {
                             switchColors = pillSwitchColors
                         )
 
-                        // 4. Блёстки
-                        QuickControlPill(
-                            iconRes = R.drawable.ic_sparkles,
-                            title = stringResource(R.string.settings_sparkles_label),
-                            isChecked = currentSettings.isSparklesEnabled,
-                            onCheckedChange = { enabled ->
-                                val updated = currentSettings.copy(isSparklesEnabled = enabled)
-                                snowView.applySettings(updated)
-                                coroutineScope.launch {
-                                    settingsRepository.saveSettings(updated)
-                                }
-                            },
-                            pillBgColor = pillBgColor,
-                            pillBorderColor = pillBorderColor,
-                            pillDividerColor = pillDividerColor,
-                            switchColors = pillSwitchColors
-                        )
-
-                        // 5. Виньетка
+                        // 4. Виньетка
                         QuickControlPill(
                             iconRes = R.drawable.ic_snowflake_notification,
                             title = stringResource(R.string.settings_vignette_enabled_label),

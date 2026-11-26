@@ -2,12 +2,16 @@ package com.example.letitsnow
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.Canvas
 import android.graphics.Color
+import android.os.Build
 import android.util.AttributeSet
 import android.view.Choreographer
 import android.view.MotionEvent
+import android.view.Surface
 import android.view.View
+import android.view.WindowManager
 
 /**
  * Кастомный View с четким разделением двух слоев:
@@ -264,9 +268,30 @@ class SnowView @JvmOverloads constructor(
         }
     }
 
+    private fun updateDisplayRotation() {
+        val rotation = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                display?.rotation ?: Surface.ROTATION_0
+            } catch (_: Throwable) {
+                @Suppress("DEPRECATION")
+                (context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager)?.defaultDisplay?.rotation ?: Surface.ROTATION_0
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            (context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager)?.defaultDisplay?.rotation ?: Surface.ROTATION_0
+        }
+        SnowSensorManager.updateDisplayRotation(rotation)
+    }
+
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
+        updateDisplayRotation()
         updateCanvasSize(w.toFloat(), h.toFloat())
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration?) {
+        super.onConfigurationChanged(newConfig)
+        updateDisplayRotation()
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -302,6 +327,7 @@ class SnowView @JvmOverloads constructor(
     fun start() {
         if (!isRunning) {
             isRunning = true
+            updateDisplayRotation()
             SnowSensorManager.register(context)
             lastRenderedFrameTimeNanos = 0L
             postNextFrame()
@@ -328,6 +354,7 @@ class SnowView @JvmOverloads constructor(
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
+        updateDisplayRotation()
         if (isOverlayMode) {
             if (visibility == VISIBLE) {
                 start()
@@ -345,6 +372,7 @@ class SnowView @JvmOverloads constructor(
     override fun onWindowVisibilityChanged(visibility: Int) {
         super.onWindowVisibilityChanged(visibility)
         if (visibility == VISIBLE) {
+            updateDisplayRotation()
             if (!isOverlayMode || this.visibility == VISIBLE) {
                 start()
             }

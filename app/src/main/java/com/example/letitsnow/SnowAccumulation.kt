@@ -221,8 +221,13 @@ class SnowAccumulation {
         val prevDensities = densities
 
         val step = 4.5f * densityScale
-        cols = (w / step).toInt().coerceIn(70, 110)
-        rows = (h / step).toInt().coerceIn(140, 240)
+        if (w >= h) {
+            cols = (w / step).toInt().coerceIn(110, 240)
+            rows = (h / step).toInt().coerceIn(60, 120)
+        } else {
+            cols = (w / step).toInt().coerceIn(60, 120)
+            rows = (h / step).toInt().coerceIn(110, 240)
+        }
 
         cellW = w / cols
         cellH = h / rows

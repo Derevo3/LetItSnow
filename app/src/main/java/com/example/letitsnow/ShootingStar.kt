@@ -10,13 +10,18 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 /**
- * Редкий праздничный элемент: падающая золотистая рождественская звёздочка
+ * Редкое событие: падающая золотистая рождественская звёздочка
  * с мягким светящимся градиентным хвостом и ореолом сияния.
  *
- * Появляется периодически (интервал 30..60 секунд) и плавно пролетает
+ * Появляется периодически (раз в 5 минут) и плавно пролетает
  * через экран по диагонали, добавляя ощущение чуда и загадывания желаний.
  */
 class ShootingStar {
+
+    companion object {
+        const val INITIAL_DELAY_SEC = 100f
+        const val REPEAT_INTERVAL_SEC = 300f
+    }
 
     var isActive: Boolean = false
         private set
@@ -29,7 +34,7 @@ class ShootingStar {
     private var tailLength: Float = 0f
     private var progress: Float = 0f
     private var durationSec: Float = 1.6f
-    private var timerUntilNextSpawn: Float = 12f // первый раз появится через 12 секунд после старта
+    private var timerUntilNextSpawn: Float = INITIAL_DELAY_SEC
 
     private val tailPaint by lazy {
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -46,7 +51,7 @@ class ShootingStar {
     fun reset() {
         isActive = false
         progress = 0f
-        timerUntilNextSpawn = 12f
+        timerUntilNextSpawn = INITIAL_DELAY_SEC
     }
 
     fun update(dtSec: Float, width: Float, height: Float, density: Float) {
@@ -63,8 +68,8 @@ class ShootingStar {
         progress += dtSec / durationSec
         if (progress >= 1.0f) {
             isActive = false
-            // Следующее появление через 30-70 секунд
-            timerUntilNextSpawn = 30f + Random.nextFloat() * 40f
+            // Следующее появление через 5 минут (300 секунд)
+            timerUntilNextSpawn = REPEAT_INTERVAL_SEC
             return
         }
 

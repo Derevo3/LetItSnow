@@ -20,16 +20,21 @@ import java.io.File
 object SnowSimulationEngine {
 
     val snowflakes = ArrayList<Snowflake>(SnowSettings.MAX_INTENSITY)
+    val bokehFlakes = ArrayList<BokehFlake>(10)
     val sparkles = ArrayList<Sparkle>(60)
     val accumulation = SnowAccumulation()
     val snowMask = SnowMask()
     val vignette = SnowVignette()
     val shootingStar = ShootingStar()
     val santaSleigh = SantaSleigh()
+    val meltingSnowflake = MeltingSnowflake()
 
     var resources: Resources? = null
 
     private val flakePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+    }
+    private val bokehPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
     }
     private val sparklePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -91,10 +96,12 @@ object SnowSimulationEngine {
         if (!settings.isSpecialAnimationsEnabled) {
             shootingStar.reset()
             santaSleigh.reset()
+            meltingSnowflake.reset()
         }
 
         if (canvasWidth > 0f && canvasHeight > 0f) {
             adjustSnowflakeCount(settings.intensity)
+            adjustBokehCount(settings.intensity, settings.isBokehEnabled)
             adjustSparkleCount(settings.sparklesCount)
             checkAndUpdateBackground()
         }
@@ -145,7 +152,14 @@ object SnowSimulationEngine {
                 s.y = (s.y * scaleY).coerceIn(0f, h)
                 s.baseY = (s.baseY * scaleY).coerceIn(0f, h)
             }
+            for (i in 0 until bokehFlakes.size) {
+                val b = bokehFlakes[i]
+                b.x = (b.x * scaleX).coerceIn(0f, w)
+                b.baseX = (b.baseX * scaleX).coerceIn(0f, w)
+                b.y = (b.y * scaleY).coerceIn(-b.radius * 2, h)
+            }
         }
+        adjustBokehCount(currentSettings.intensity, currentSettings.isBokehEnabled)
         adjustSparkleCount(currentSettings.sparklesCount)
         checkAndUpdateBackground()
     }
@@ -172,6 +186,29 @@ object SnowSimulationEngine {
         } else if (snowflakes.size > targetCount) {
             while (snowflakes.size > targetCount) {
                 snowflakes.removeAt(snowflakes.size - 1)
+            }
+        }
+    }
+
+    private fun adjustBokehCount(intensity: Int, enabled: Boolean) {
+        if (canvasWidth <= 0f || canvasHeight <= 0f) return
+        if (!enabled) {
+            if (bokehFlakes.isNotEmpty()) {
+                bokehFlakes.clear()
+            }
+            return
+        }
+        val targetCount = (intensity / 34).coerceIn(2, 8)
+        if (bokehFlakes.size < targetCount) {
+            val needed = targetCount - bokehFlakes.size
+            repeat(needed) {
+                val b = BokehFlake()
+                b.reset(canvasWidth, canvasHeight, density, isInitial = bokehFlakes.size < targetCount, dirY = SnowSensorManager.gravityY)
+                bokehFlakes.add(b)
+            }
+        } else if (bokehFlakes.size > targetCount) {
+            while (bokehFlakes.size > targetCount) {
+                bokehFlakes.removeAt(bokehFlakes.size - 1)
             }
         }
     }
@@ -226,11 +263,13 @@ object SnowSimulationEngine {
         lastUpdateNanos = frameTimeNanos
 
         adjustSnowflakeCount(currentSettings.intensity)
+        adjustBokehCount(currentSettings.intensity, currentSettings.isBokehEnabled)
         accumulation.allowGrowthAboveBase = currentSettings.isSnowbankGrowthEnabled && !isOverlay
 
         val w = canvasWidth
         val h = canvasHeight
-        val fallSpeedMult = currentSettings.fallSpeed
+        val styleSpeedFactor = if (currentSettings.snowflakeStyle == SnowflakeStyle.DIAMOND_DUST) 0.78f else 1.0f
+        val fallSpeedMult = currentSettings.fallSpeed * styleSpeedFactor
         val accumMult = currentSettings.accumulationRate
         val sizeMult = currentSettings.snowflakeSize
 
@@ -256,6 +295,21 @@ object SnowSimulationEngine {
             )
         }
 
+        if (currentSettings.isBokehEnabled && bokehFlakes.isNotEmpty()) {
+            for (i in 0 until bokehFlakes.size) {
+                bokehFlakes[i].update(
+                    dtSec = dt,
+                    width = w,
+                    height = h,
+                    density = density,
+                    fallSpeedMultiplier = currentSettings.fallSpeed,
+                    sizeMultiplier = sizeMult,
+                    dirX = dirX,
+                    dirY = dirY
+                )
+            }
+        }
+
         accumulation.update(dt, accumMult)
 
         if (currentSettings.isSparklesEnabled) {
@@ -271,10 +325,11 @@ object SnowSimulationEngine {
             sparkles.clear()
         }
 
-        // Обновление рождественской падающей звёздочки и праздничных анимаций
+        // Обновление рождественской падающей звёздочки и редких праздничных анимаций
         if (currentSettings.isSpecialAnimationsEnabled) {
             shootingStar.update(dt, w, h, density)
             santaSleigh.update(dt, w, h, density)
+            meltingSnowflake.update(dt, w, h, density, dirX, dirY)
         }
     }
 
@@ -322,12 +377,20 @@ object SnowSimulationEngine {
             }
         }
 
-        // 4. Отрисовка рождественской падающей звёздочки и праздничных анимаций
+        // 4. Отрисовка рождественской падающей звёздочки и тающей снежинки на стекле
         if (currentSettings.isSpecialAnimationsEnabled) {
             shootingStar.draw(canvas, density, theme)
+            meltingSnowflake.draw(canvas, density, theme)
         }
 
-        // 5. Отрисовка морозной виньетки по краям экрана (слой 5)
+        // 5. Кинематографическое боке переднего плана (прямо перед объективом камеры)
+        if (currentSettings.isBokehEnabled && bokehFlakes.isNotEmpty()) {
+            for (i in 0 until bokehFlakes.size) {
+                bokehFlakes[i].draw(canvas, bokehPaint, theme, sizeMult)
+            }
+        }
+
+        // 6. Отрисовка морозной виньетки по краям экрана (слой 6)
         if (currentSettings.isVignetteEnabled) {
             val r = res ?: resources
             if (r != null) {
